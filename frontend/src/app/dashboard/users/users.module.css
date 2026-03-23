@@ -1,0 +1,13 @@
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .statusDot {
+    width: 0.375rem;
+    height: 0.375rem;
+  }
+}
