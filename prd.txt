@@ -1,0 +1,73 @@
+Product Requirements Document (PRD)
+Product Name: Salon Customer Management System (SCMS)
+1. Product Overview
+The Salon Customer Management System (SCMS) is a web-based application designed to help
+salon owners manage customer data, appointments, services, and visit history efficiently.
+2. Goals & Objectives
+
+Digitize customer records
+
+Manage appointment bookings via calendar
+
+Track service history and repeat visits
+
+Improve operational efficiency
+
+Provide data insights through reports
+3. User Roles
+
+Admin (Salon Owner): Full access, manage customers, services, appointments, reports.
+
+Staff/Receptionist: Add customers, book appointments, view history.
+4. Core Features
+
+Customer Management (Add, Edit, Delete, Search customers)
+
+Service Management (Manage salon services, price, duration)
+
+Appointment Booking with Calendar (Daily/Weekly/Monthly views)
+
+Customer Visit History Tracking
+
+Dashboard with analytics overview
+
+Reports (Daily/Monthly revenue, popular services)
+
+5. Technical Requirements
+
+Frontend: Next.js (Responsive UI, API integration, authentication handling)
+
+Backend: FastAPI (REST APIs, JWT authentication, CRUD operations)
+
+Database: PostgreSQL (Relational database with proper relationships)
+
+API Communication: JSON format with Bearer Token authentication
+6. Database Structure (High-Level)
+
+Users (id, name, email, password, role)
+
+Customers (id, name, phone, email, dob, notes, created_at)
+
+Services (id, name, category, price, duration)
+
+Appointments (id, customer_id, date, time, status, total_amount)
+
+Appointment_Services (id, appointment_id, service_id)
+7. Non-Functional Requirements
+
+Secure authentication and data protection
+
+Fast performance and scalability
+
+User-friendly interface
+
+Mobile-responsive design
+8. Future Enhancements
+
+SMS/WhatsApp reminders
+
+Online payment integration
+
+Loyalty points system
+
+Multi-branch management

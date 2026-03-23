@@ -1,0 +1,1 @@
+[{"email": "admin@salonpro.com", "password": "$2b$12$G4NU0tuNOWJvhDhkSK9yP.CBTpa1oObc7zy2XTrEvM3qMfJR1bSne"}, {"email": "vinitapanchal7@gmail.com", "password": "$2b$12$gkcs0/Ice7bVP8v/mCeNE.MtFuwGOwEv9QdvIPIfiUEUOjb6wUwem"}, {"email": "palak@gmail.com", "password": "$2b$12$BSWA4EK8q1ayPEcD.qzxYeN0QdpXmG134tBeJxQyaELlQg5W4ySV2"}]
