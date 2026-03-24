@@ -236,7 +236,7 @@ export default function AppointmentsPage() {
                     </div>
                   </td>
                   <td style={{ fontWeight: 500 }}>{a.customer.name}</td>
-                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '180px' }}>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', whiteSpace: 'normal' }}>
                     {a.services.map(s => s.name).join(', ')}
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>{getStaffName(a)}</td>
