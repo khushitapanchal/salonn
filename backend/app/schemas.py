@@ -69,6 +69,25 @@ class AppointmentBase(BaseModel):
 class AppointmentCreate(AppointmentBase):
     pass
 
+class AppointmentServiceResponse(BaseModel):
+    id: Optional[int] = None
+    name: str
+    price: float
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_fields(cls, data: Any) -> Any:
+        if hasattr(data, 'appointment_id'):
+            return {
+                "id": data.service_id,
+                "name": data.service_name or "",
+                "price": float(data.price_at_booking or 0),
+            }
+        return data
+
+    class Config:
+        from_attributes = True
+
 class AppointmentResponse(BaseModel):
     id: int
     customer_id: int
@@ -81,16 +100,14 @@ class AppointmentResponse(BaseModel):
     assigned_staff_id: Optional[int] = None
     assigned_staff: Optional[UserResponse] = None
     customer: CustomerResponse
-    services: List[ServiceResponse]
+    services: List[AppointmentServiceResponse] = []
     service_ids: List[int] = []
 
     @model_validator(mode='before')
     @classmethod
     def populate_service_ids(cls, data: Any) -> Any:
-        if hasattr(data, 'services') and not hasattr(data, 'service_ids'):
-            data.service_ids = [s.id for s in data.services]
-        elif hasattr(data, 'services') and isinstance(data, dict) is False:
-            data.service_ids = [s.id for s in data.services]
+        if hasattr(data, 'services'):
+            data.service_ids = [s.service_id for s in data.services if s.service_id is not None]
         return data
 
     class Config:

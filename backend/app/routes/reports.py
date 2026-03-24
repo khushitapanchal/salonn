@@ -142,33 +142,33 @@ def popular_services_report(
             models.Service.name,
             models.Service.category,
             models.Service.price,
-            func.count(models.appointment_services.c.appointment_id).label("bookings"),
+            func.count(models.AppointmentService.appointment_id).label("bookings"),
+            func.sum(models.AppointmentService.price_at_booking).label("revenue"),
         )
         .join(
-            models.appointment_services,
-            models.Service.id == models.appointment_services.c.service_id,
+            models.AppointmentService,
+            models.Service.id == models.AppointmentService.service_id,
         )
         .join(
             models.Appointment,
-            models.Appointment.id == models.appointment_services.c.appointment_id,
+            models.Appointment.id == models.AppointmentService.appointment_id,
         )
         .filter(*_revenue_filter())
         .group_by(models.Service.id)
-        .order_by(func.count(models.appointment_services.c.appointment_id).desc())
+        .order_by(func.count(models.AppointmentService.appointment_id).desc())
         .all()
     )
 
     total_bookings = sum(r.bookings for r in rows) or 1
     data = []
     for r in rows:
-        revenue = float(r.price) * r.bookings
         data.append({
             "id": r.id,
             "name": r.name,
             "category": r.category,
             "price": float(r.price),
             "bookings": r.bookings,
-            "revenue": revenue,
+            "revenue": float(r.revenue or 0),
             "percentage": round((r.bookings / total_bookings) * 100, 1),
         })
 

@@ -8,6 +8,7 @@ import {
   CalendarDays, Activity, Crown, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 interface RevenueDay {
   date: string;
@@ -65,6 +66,7 @@ const getPaymentColor = (status: string) => {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,7 +104,7 @@ export default function DashboardPage() {
 
       {/* ── Stat Cards ──────────────────────────────────────────────── */}
       <div className={styles.statsGrid} style={{ marginBottom: '1.5rem' }}>
-        <div className={styles.statCard}>
+        <div className={styles.statCard} onClick={() => router.push('/dashboard/customers')} style={{ cursor: 'pointer' }}>
           <div className={styles.statIcon} style={{ backgroundColor: 'var(--secondary-light)', color: 'var(--secondary)' }}>
             <Users size={24} />
           </div>
@@ -112,7 +114,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={styles.statCard}>
+        <div className={styles.statCard} onClick={() => router.push('/dashboard/appointments')} style={{ cursor: 'pointer' }}>
           <div className={styles.statIcon} style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
             <CalendarCheck size={24} />
           </div>
@@ -122,7 +124,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={styles.statCard}>
+        <div className={styles.statCard} onClick={() => router.push('/dashboard/calendar')} style={{ cursor: 'pointer' }}>
           <div className={styles.statIcon} style={{ backgroundColor: 'var(--warning-light)', color: 'var(--warning-dark)' }}>
             <CalendarDays size={24} />
           </div>
@@ -132,7 +134,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={styles.statCard}>
+        <div className={styles.statCard} onClick={() => router.push('/dashboard/reports')} style={{ cursor: 'pointer' }}>
           <div className={styles.statIcon} style={{ backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>
             <IndianRupee size={24} />
           </div>

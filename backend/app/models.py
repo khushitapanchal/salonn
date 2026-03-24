@@ -1,12 +1,15 @@
-from sqlalchemy import Column, Integer, String, Date, Time, Text, ForeignKey, Numeric, DateTime, Table
+from sqlalchemy import Column, Integer, String, Date, Time, Text, ForeignKey, Numeric, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
 
-appointment_services = Table('appointment_services', Base.metadata,
-    Column('appointment_id', Integer, ForeignKey('appointments.id'), primary_key=True),
-    Column('service_id', Integer, ForeignKey('services.id'), primary_key=True)
-)
+class AppointmentService(Base):
+    __tablename__ = 'appointment_services'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    appointment_id = Column(Integer, ForeignKey('appointments.id'), nullable=False)
+    service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
+    service_name = Column(String, nullable=True)
+    price_at_booking = Column(Numeric(10, 2), nullable=True)
 
 class User(Base):
     __tablename__ = "users"
@@ -37,8 +40,6 @@ class Service(Base):
     category = Column(String, index=True)
     price = Column(Numeric(10, 2))
     duration = Column(Integer) # in minutes
-    
-    appointments = relationship("Appointment", secondary=appointment_services, back_populates="services")
 
 class Appointment(Base):
     __tablename__ = "appointments"
@@ -54,4 +55,4 @@ class Appointment(Base):
 
     customer = relationship("Customer", back_populates="appointments")
     assigned_staff = relationship("User", foreign_keys=[assigned_staff_id])
-    services = relationship("Service", secondary=appointment_services, back_populates="appointments")
+    services = relationship("AppointmentService", cascade="all, delete-orphan")

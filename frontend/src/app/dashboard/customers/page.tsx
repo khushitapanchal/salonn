@@ -17,7 +17,7 @@ interface Customer {
 }
 
 interface Service {
-  id: number; name: string; category: string; price: number; duration: number;
+  id: number; name: string; price: number; category?: string; duration?: number;
 }
 interface StaffMember {
   id: number; name: string; email: string; role: string;
@@ -338,7 +338,7 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <label className="label">Phone</label>
-                  <input className="input-field" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                  <input className="input-field" required value={formData.phone} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setFormData({ ...formData, phone: v }); }} pattern="\d{10}" maxLength={10} title="Enter 10 digit phone number" placeholder="10 digit number" />
                 </div>
                 <div>
                   <label className="label">Notes (Optional)</label>
@@ -387,19 +387,17 @@ export default function CustomersPage() {
               <tr>
                 <th>Name</th>
                 <th>Phone</th>
-                <th>Email</th>
                 <th>Notes</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {customers.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>No customers found.</td></tr>
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>No customers found.</td></tr>
               ) : customers.map(c => (
                 <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(c)}>
                   <td style={{ fontWeight: 500 }}>{c.name}</td>
                   <td>{c.phone}</td>
-                  <td style={{ color: c.email ? 'inherit' : 'var(--text-muted)' }}>{c.email || '—'}</td>
                   <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.notes || '—'}</td>
                   <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                     <button className={styles.actionBtn} onClick={() => openDetail(c)} title="View details"><Eye size={16} /></button>
@@ -424,7 +422,7 @@ export default function CustomersPage() {
               </div>
               <div>
                 <label className="label">Phone</label>
-                <input className="input-field" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                <input className="input-field" required value={formData.phone} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setFormData({ ...formData, phone: v }); }} pattern="\d{10}" maxLength={10} title="Enter 10 digit phone number" placeholder="10 digit number" />
               </div>
               <div>
                 <label className="label">Notes (Optional)</label>

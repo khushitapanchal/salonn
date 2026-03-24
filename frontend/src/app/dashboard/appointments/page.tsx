@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import dashStyles from '../dashboard.module.css';
 import custStyles from '../customers/customers.module.css';
-import { Plus, CheckCircle, XCircle, Clock, Edit2, UserPlus } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, Edit2, UserPlus, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
 
 interface Service {
-  id: number; name: string; category: string; price: number; duration: number;
+  id: number; name: string; price: number; category?: string; duration?: number;
 }
 interface Customer {
   id: number; name: string; phone: string; email?: string;
@@ -51,6 +52,8 @@ const getStatusColor = (status: string) => {
 };
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
@@ -179,6 +182,16 @@ export default function AppointmentsPage() {
     fetchData();
   };
 
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    try {
+      await api.delete(`/appointments/${id}`);
+      fetchData();
+    } catch {
+      alert('Error deleting appointment.');
+    }
+  };
+
   const getStaffName = (appt: Appointment) => {
     if (appt.assigned_staff) return appt.assigned_staff.name;
     return '—';
@@ -262,6 +275,9 @@ export default function AppointmentsPage() {
                           <button onClick={() => updateStatus(a.id, 'completed')} className={custStyles.actionBtn} style={{ color: 'var(--success)' }} title="Mark Completed"><CheckCircle size={18} /></button>
                           <button onClick={() => updateStatus(a.id, 'cancelled')} className={custStyles.actionBtn} style={{ color: 'var(--danger)' }} title="Cancel"><XCircle size={18} /></button>
                         </>
+                      )}
+                      {isAdmin && (
+                        <button onClick={() => handleDelete(a.id)} className={custStyles.actionBtn} style={{ color: 'var(--danger)' }} title="Delete"><Trash2 size={16} /></button>
                       )}
                     </div>
                   </td>

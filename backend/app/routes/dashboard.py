@@ -89,7 +89,7 @@ def get_dashboard_stats(db: Session = Depends(database.get_db), current_user: mo
             "status": a.status,
             "payment_status": a.payment_status or "unpaid",
             "total_amount": float(a.total_amount),
-            "services": [s.name for s in a.services],
+            "services": [s.service_name for s in a.services],
             "staff_name": a.assigned_staff.name if a.assigned_staff else None,
         })
 

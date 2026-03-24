@@ -41,7 +41,11 @@ def delete_service(service_id: int, db: Session = Depends(database.get_db), curr
     service = db.query(models.Service).filter(models.Service.id == service_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-        
+
+    # Clear FK reference but keep snapshot data (service_name, price_at_booking) for history
+    db.query(models.AppointmentService).filter(
+        models.AppointmentService.service_id == service_id
+    ).update({models.AppointmentService.service_id: None})
     db.delete(service)
     db.commit()
     return {"detail": "Service deleted successfully"}

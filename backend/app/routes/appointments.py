@@ -32,7 +32,12 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
         total_amount=total_amount,
         completed_at=datetime.utcnow() if appointment.status == "completed" else None,
     )
-    new_app.services.extend(services)
+    for service in services:
+        new_app.services.append(models.AppointmentService(
+            service_id=service.id,
+            service_name=service.name,
+            price_at_booking=service.price,
+        ))
 
     db.add(new_app)
     db.commit()
@@ -49,7 +54,30 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     if len(services) != len(appointment.service_ids):
         raise HTTPException(status_code=400, detail="One or more services not found")
 
-    total_amount = sum([service.price for service in services])
+    # Build a map of existing snapshot prices to preserve them
+    existing_snapshots = {s.service_id: s for s in app.services}
+
+    # For each service: keep original snapshot if it existed, else use current price
+    new_service_items = []
+    total_amount = 0
+    for service in services:
+        if service.id in existing_snapshots:
+            # Preserve original price snapshot
+            old = existing_snapshots[service.id]
+            new_service_items.append(models.AppointmentService(
+                service_id=service.id,
+                service_name=old.service_name,
+                price_at_booking=old.price_at_booking,
+            ))
+            total_amount += old.price_at_booking
+        else:
+            # New service added — snapshot current price
+            new_service_items.append(models.AppointmentService(
+                service_id=service.id,
+                service_name=service.name,
+                price_at_booking=service.price,
+            ))
+            total_amount += service.price
 
     # Auto-set completed_at when status changes to completed
     if appointment.status == "completed" and app.status != "completed":
@@ -64,7 +92,11 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     app.status = appointment.status
     app.payment_status = appointment.payment_status
     app.total_amount = total_amount
-    app.services = services
+
+    # Replace service associations
+    app.services.clear()
+    for item in new_service_items:
+        app.services.append(item)
 
     db.commit()
     db.refresh(app)
@@ -86,3 +118,14 @@ def update_appointment_status(appointment_id: int, status: str, db: Session = De
     db.commit()
     db.refresh(app)
     return app
+
+@router.delete("/{appointment_id}")
+def delete_appointment(appointment_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    app = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    db.delete(app)
+    db.commit()
+    return {"detail": "Appointment deleted successfully"}
