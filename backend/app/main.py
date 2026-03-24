@@ -34,7 +34,7 @@ with engine.connect() as conn:
         # New schema has auto-increment id PK with nullable service_id
         conn.execute(text('''
             CREATE TABLE appointment_services_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 appointment_id INTEGER NOT NULL REFERENCES appointments(id),
                 service_id INTEGER REFERENCES services(id),
                 service_name VARCHAR,
