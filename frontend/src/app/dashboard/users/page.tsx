@@ -62,8 +62,16 @@ export default function UsersPage() {
 
   const openStaffDetail = async (u: UserItem) => {
     setDetailLoading(true); setDetailData(null);
-    try { const res = await api.get(`/users/${u.id}/performance`); setDetailData(res.data); }
-    catch (err: any) { alert(err?.response?.data?.detail || 'Error loading staff details.'); setDetailLoading(false); }
+    try {
+      const res = await api.get(`/users/${u.id}/performance`);
+      setDetailData(res.data);
+      setDetailLoading(false);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      alert(`Error (${status}): ${detail || err.message}`);
+      setDetailLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
