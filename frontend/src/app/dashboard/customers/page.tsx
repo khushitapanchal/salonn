@@ -29,10 +29,12 @@ interface Appointment {
   time: string;
   status: string;
   total_amount: number;
+  paid_amount: number;
   services: Service[];
   assigned_staff_id: number | null;
   assigned_staff: StaffMember | null;
   payment_status: string;
+  payment_mode: string | null;
   completed_at: string | null;
 }
 
@@ -143,9 +145,9 @@ export default function CustomersPage() {
   // ── Detail View ───────────────────────────────────────────────────
   if (selectedCustomer) {
     const completedAppts = customerAppointments.filter(a => a.status === 'completed');
-    const paidAppts = completedAppts.filter(a => a.payment_status === 'paid');
+    const paidOrPartial = completedAppts.filter(a => a.payment_status === 'paid' || a.payment_status === 'partial');
     const totalVisits = completedAppts.length;
-    const totalSpent = paidAppts.reduce((sum, a) => sum + a.total_amount, 0);
+    const totalSpent = paidOrPartial.reduce((sum, a) => sum + (a.paid_amount || 0), 0);
     const lastVisit = completedAppts.length > 0 ? completedAppts[0] : null; // already sorted desc
 
     return (
@@ -305,17 +307,31 @@ export default function CustomersPage() {
                         </span>
                       </td>
                       <td>
-                        <span style={{
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          backgroundColor: `${getPaymentColor(a.payment_status || 'unpaid')}20`,
-                          color: getPaymentColor(a.payment_status || 'unpaid'),
-                          textTransform: 'uppercase',
-                        }}>
-                          {a.payment_status || 'unpaid'}
-                        </span>
+                        <div>
+                          <span style={{
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: `${getPaymentColor(a.payment_status || 'unpaid')}20`,
+                            color: getPaymentColor(a.payment_status || 'unpaid'),
+                            textTransform: 'uppercase',
+                          }}>
+                            {a.payment_status || 'unpaid'}
+                          </span>
+                          {a.payment_mode && (
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '0.35rem', textTransform: 'capitalize' }}>
+                              ({a.payment_mode})
+                            </span>
+                          )}
+                          {a.payment_status === 'partial' && (
+                            <div style={{ marginTop: '0.35rem', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                              <span style={{ color: 'var(--success)', fontWeight: 600 }}>Paid: ₹{a.paid_amount}</span>
+                              <span style={{ color: 'var(--text-muted)' }}> / </span>
+                              <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Due: ₹{(a.total_amount - a.paid_amount).toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ fontWeight: 600 }}>₹{a.total_amount}</td>
                     </tr>
