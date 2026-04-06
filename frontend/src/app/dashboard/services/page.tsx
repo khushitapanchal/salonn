@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import dashStyles from '../dashboard.module.css';
 import custStyles from '../customers/customers.module.css';
-import { Plus, Edit2, Trash2, Scissors, ChevronDown, ChevronRight, Layers, FolderPlus } from 'lucide-react';
+import { Plus, Edit2, Trash2, Scissors, ChevronDown, ChevronRight, Layers, FolderPlus, Clock } from 'lucide-react';
 import styles from './services.module.css';
 
 interface SubService {
@@ -232,41 +232,52 @@ export default function ServicesPage() {
 
   // Render a service card
   const renderServiceCard = (s: Service, hideCategory?: boolean) => (
-    <div key={s.id} className={dashStyles.statCard} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '1.25rem 1.25rem 0.75rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div className={dashStyles.statIcon} style={{ background: 'var(--primary-light)', color: 'var(--primary)', width: '2.5rem', height: '2.5rem' }}>
+    <div key={s.id} className={dashStyles.statCard} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+      {/* Main content */}
+      <div style={{ padding: '1.25rem 1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div className={dashStyles.statIcon} style={{ background: 'var(--primary-light)', color: 'var(--primary)', width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', flexShrink: 0 }}>
               <Scissors size={18} />
             </div>
             <div>
-              <h3 style={{ fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</h3>
+              <h3 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)', margin: 0, lineHeight: 1.3 }}>{s.name}</h3>
               {!hideCategory && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.15rem', display: 'block' }}>
                   {s.category}
                 </span>
               )}
             </div>
           </div>
-          <h3 style={{ fontWeight: 700, color: 'var(--primary)' }}>₹{s.price}</h3>
+          <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
+            <h3 style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '1.1rem', margin: 0 }}>₹{s.price}</h3>
+          </div>
         </div>
-        <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          <span>{s.duration} mins</span>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className={custStyles.actionBtn} onClick={() => openAddSubServiceModal(s)} title="Add sub-service" style={{ color: 'var(--primary)' }}><Layers size={16} /></button>
-            <button className={custStyles.actionBtn} onClick={() => openEditModal(s)} title="Edit"><Edit2 size={16} /></button>
-            <button className={custStyles.actionBtn} style={{ color: 'var(--danger)' }} onClick={() => handleDelete(s)} title="Delete"><Trash2 size={16} /></button>
+
+        {/* Duration + Actions row */}
+        <div style={{
+          marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Clock size={14} /> {s.duration} mins
+          </span>
+          <div style={{ display: 'flex', gap: '0.35rem' }}>
+            <button className={custStyles.actionBtn} onClick={() => openAddSubServiceModal(s)} title="Add sub-service" style={{ color: 'var(--primary)', padding: '0.35rem' }}><Layers size={15} /></button>
+            <button className={custStyles.actionBtn} onClick={() => openEditModal(s)} title="Edit" style={{ padding: '0.35rem' }}><Edit2 size={15} /></button>
+            <button className={custStyles.actionBtn} style={{ color: 'var(--danger)', padding: '0.35rem' }} onClick={() => handleDelete(s)} title="Delete"><Trash2 size={15} /></button>
           </div>
         </div>
       </div>
 
+      {/* Sub-services expandable section */}
       {s.sub_services && s.sub_services.length > 0 && (
         <>
           <button
             onClick={() => toggleExpanded(s.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.5rem 1.25rem', background: 'var(--bg-color)',
+              padding: '0.6rem 1.5rem', background: 'var(--bg-color)',
               border: 'none', borderTop: '1px solid var(--border)',
               cursor: 'pointer', fontSize: '0.8rem', color: 'var(--primary)',
               fontWeight: 600, width: '100%', textAlign: 'left',
@@ -277,20 +288,21 @@ export default function ServicesPage() {
           </button>
           {expandedServices.has(s.id) && (
             <div style={{ borderTop: '1px solid var(--border)' }}>
-              {s.sub_services.map(sub => (
+              {s.sub_services.map((sub, idx) => (
                 <div key={sub.id} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.6rem 1.25rem 0.6rem 2.5rem', borderBottom: '1px solid var(--border)',
-                  fontSize: '0.85rem',
+                  padding: '0.75rem 1.5rem 0.75rem 2.75rem',
+                  borderBottom: idx < s.sub_services.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: '0.85rem', background: 'var(--bg-color)',
                 }}>
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>{sub.name}</span>
-                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{sub.duration} mins</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{sub.duration} mins</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{sub.price}</span>
-                    <button className={custStyles.actionBtn} onClick={() => openEditModal(sub)} title="Edit"><Edit2 size={14} /></button>
-                    <button className={custStyles.actionBtn} style={{ color: 'var(--danger)' }} onClick={() => handleDelete(sub)} title="Delete"><Trash2 size={14} /></button>
+                    <span style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.9rem' }}>₹{sub.price}</span>
+                    <button className={custStyles.actionBtn} onClick={() => openEditModal(sub)} title="Edit" style={{ padding: '0.25rem' }}><Edit2 size={13} /></button>
+                    <button className={custStyles.actionBtn} style={{ color: 'var(--danger)', padding: '0.25rem' }} onClick={() => handleDelete(sub)} title="Delete"><Trash2 size={13} /></button>
                   </div>
                 </div>
               ))}
