@@ -45,6 +45,7 @@ class CustomerResponse(CustomerBase):
 class ServiceBase(BaseModel):
     name: str
     category: str
+    sub_category: Optional[str] = None
     price: float
     duration: int
     parent_id: Optional[int] = None
@@ -63,6 +64,7 @@ class SubServiceResponse(BaseModel):
     id: int
     name: str
     category: str
+    sub_category: Optional[str] = None
     price: float
     duration: int
     parent_id: Optional[int] = None

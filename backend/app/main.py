@@ -107,10 +107,12 @@ try:
                 WHERE (service_name IS NULL OR price_at_booking IS NULL) AND service_id IS NOT NULL
             '''))
 
-            # Services: add parent_id column for sub-services
+            # Services: add parent_id and sub_category columns
             service_columns = [col['name'] for col in inspector.get_columns('services')]
             if 'parent_id' not in service_columns:
                 conn.execute(text('ALTER TABLE services ADD COLUMN parent_id INTEGER REFERENCES services(id)'))
+            if 'sub_category' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN sub_category VARCHAR'))
 
             conn.commit()
         logger.info("Migrations completed successfully")

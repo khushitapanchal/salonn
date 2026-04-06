@@ -38,6 +38,7 @@ class Service(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     category = Column(String, index=True)
+    sub_category = Column(String, nullable=True)
     price = Column(Numeric(10, 2))
     duration = Column(Integer) # in minutes
     parent_id = Column(Integer, ForeignKey("services.id"), nullable=True)
