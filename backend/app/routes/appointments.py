@@ -28,11 +28,14 @@ def get_appointments(db: Session = Depends(database.get_db), current_user: model
 
 @router.post("/", response_model=schemas.AppointmentResponse)
 def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not appointment.service_ids:
+        raise HTTPException(status_code=400, detail="At least one service is required")
+
     services = db.query(models.Service).filter(models.Service.id.in_(appointment.service_ids)).all()
     if len(services) != len(appointment.service_ids):
         raise HTTPException(status_code=400, detail="One or more services not found")
 
-    total_amount = sum([service.price for service in services])
+    total_amount = float(sum([float(service.price) for service in services]))
 
     # For "paid" status, paid_amount = total; for "unpaid", paid_amount = 0
     if appointment.payment_status == "paid":
@@ -40,7 +43,7 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
     elif appointment.payment_status == "unpaid":
         paid_amount = 0
     else:
-        paid_amount = appointment.paid_amount or 0
+        paid_amount = float(appointment.paid_amount or 0)
 
     new_app = models.Appointment(
         customer_id=appointment.customer_id,
@@ -57,7 +60,7 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
         new_app.services.append(models.AppointmentService(
             service_id=service.id,
             service_name=service.name,
-            price_at_booking=service.price,
+            price_at_booking=float(service.price),
         ))
 
     db.add(new_app)

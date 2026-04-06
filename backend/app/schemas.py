@@ -48,6 +48,13 @@ class ServiceBase(BaseModel):
     price: float
     duration: int
 
+    @model_validator(mode='before')
+    @classmethod
+    def convert_decimal(cls, data: Any) -> Any:
+        if hasattr(data, 'price') and data.price is not None:
+            data.price = float(data.price)
+        return data
+
 class ServiceCreate(ServiceBase):
     pass
 
@@ -97,7 +104,7 @@ class AppointmentResponse(BaseModel):
     status: str
     payment_status: str = "unpaid"
     paid_amount: float = 0.0
-    total_amount: float
+    total_amount: float = 0.0
     completed_at: Optional[datetime] = None
     assigned_staff_id: Optional[int] = None
     assigned_staff: Optional[UserResponse] = None
@@ -116,6 +123,11 @@ class AppointmentResponse(BaseModel):
     def populate_service_ids(cls, data: Any) -> Any:
         if hasattr(data, 'services'):
             data.service_ids = [s.service_id for s in data.services if s.service_id is not None]
+        # Convert Decimal to float for PostgreSQL compatibility
+        if hasattr(data, 'paid_amount') and data.paid_amount is not None:
+            data.paid_amount = float(data.paid_amount)
+        if hasattr(data, 'total_amount') and data.total_amount is not None:
+            data.total_amount = float(data.total_amount)
         return data
 
     class Config:
