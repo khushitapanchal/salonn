@@ -266,22 +266,31 @@ export default function AppointmentsPage() {
                     </span>
                   </td>
                   <td>
-                    <span style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      backgroundColor: `${getPaymentColor(a.payment_status || 'unpaid')}20`,
-                      color: getPaymentColor(a.payment_status || 'unpaid'),
-                      textTransform: 'uppercase'
-                    }}>
-                      {a.payment_status || 'unpaid'}
-                    </span>
-                    {a.payment_status === 'partial' && a.paid_amount > 0 && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        Paid ₹{a.paid_amount} / ₹{a.total_amount}
-                      </div>
-                    )}
+                    <div>
+                      <span style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        backgroundColor: `${getPaymentColor(a.payment_status || 'unpaid')}20`,
+                        color: getPaymentColor(a.payment_status || 'unpaid'),
+                        textTransform: 'uppercase'
+                      }}>
+                        {a.payment_status || 'unpaid'}
+                      </span>
+                      {a.payment_mode && (
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '0.35rem', textTransform: 'capitalize' }}>
+                          ({a.payment_mode})
+                        </span>
+                      )}
+                      {a.payment_status === 'partial' && a.paid_amount > 0 && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                          <span style={{ color: 'var(--success)', fontWeight: 600 }}>Paid: ₹{a.paid_amount}</span>
+                          <span style={{ color: 'var(--text-muted)' }}> / </span>
+                          <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Due: ₹{(a.total_amount - a.paid_amount).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td style={{ fontWeight: 600 }}>₹{a.total_amount}</td>
                   <td style={{ textAlign: 'right' }}>
