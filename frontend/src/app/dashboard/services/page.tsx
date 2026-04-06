@@ -422,17 +422,17 @@ export default function ServicesPage() {
                     </div>
 
                     {/* Sub-category services grid */}
-                    <div style={{ padding: '1rem 1.25rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem', background: 'var(--card-bg)' }}>
-                      {subCatServices.length > 0 ? (
-                        <div className={styles.grid} style={{ marginTop: 0 }}>
-                          {subCatServices.map(s => renderServiceCard(s, true))}
-                        </div>
-                      ) : (
+                    {subCatServices.length > 0 ? (
+                      <div className={styles.grid}>
+                        {subCatServices.map(s => renderServiceCard(s, true))}
+                      </div>
+                    ) : (
+                      <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem', background: 'var(--bg-color)' }}>
                         <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1.5rem 0', margin: 0 }}>
                           No services yet. Click <strong>+</strong> to add a service.
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
