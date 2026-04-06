@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from .. import models, schemas, database, auth
 
@@ -75,6 +76,70 @@ def toggle_user_status(user_id: int, db: Session = Depends(database.get_db), cur
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/{user_id}/performance")
+def get_user_performance(user_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(require_admin)):
+    """Get staff member performance: customers attended, services, revenue."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # All appointments assigned to this staff
+    appointments = db.query(models.Appointment).filter(
+        models.Appointment.assigned_staff_id == user_id
+    ).all()
+
+    total_appointments = len(appointments)
+    completed = [a for a in appointments if a.status == "completed"]
+    total_completed = len(completed)
+    total_revenue = float(sum(float(a.paid_amount or 0) for a in completed))
+
+    # Unique customers served
+    customer_ids = set(a.customer_id for a in appointments)
+    total_customers = len(customer_ids)
+
+    # Services provided (from completed appointments)
+    service_counts: dict = {}
+    for a in completed:
+        for s in a.services:
+            name = s.service_name or "Unknown"
+            if name not in service_counts:
+                service_counts[name] = {"count": 0, "revenue": 0.0}
+            service_counts[name]["count"] += 1
+            service_counts[name]["revenue"] += float(s.price_at_booking or 0)
+
+    services_breakdown = [
+        {"name": k, "count": v["count"], "revenue": v["revenue"]}
+        for k, v in sorted(service_counts.items(), key=lambda x: x[1]["revenue"], reverse=True)
+    ]
+
+    # Recent appointments (last 10)
+    recent = sorted(appointments, key=lambda a: (a.date, a.time), reverse=True)[:10]
+    recent_list = []
+    for a in recent:
+        recent_list.append({
+            "id": a.id,
+            "customer_name": a.customer.name if a.customer else "Unknown",
+            "customer_phone": a.customer.phone if a.customer else "",
+            "date": a.date.isoformat(),
+            "time": str(a.time)[:5],
+            "status": a.status,
+            "payment_status": a.payment_status or "unpaid",
+            "total_amount": float(a.total_amount or 0),
+            "paid_amount": float(a.paid_amount or 0),
+            "services": [s.service_name or "Unknown" for s in a.services],
+        })
+
+    return {
+        "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role},
+        "total_appointments": total_appointments,
+        "total_completed": total_completed,
+        "total_customers": total_customers,
+        "total_revenue": total_revenue,
+        "services_breakdown": services_breakdown,
+        "recent_appointments": recent_list,
+    }
 
 
 @router.delete("/{user_id}")
