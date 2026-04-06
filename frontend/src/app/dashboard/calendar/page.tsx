@@ -31,6 +31,7 @@ interface Appointment {
   time: string;
   status: string;
   total_amount: number;
+  paid_amount: number;
   services: Service[];
   assigned_staff_id: number | null;
   assigned_staff: StaffMember | null;
@@ -89,6 +90,7 @@ export default function CalendarPage() {
     assigned_staff_id: '',
     status: 'booked',
     payment_status: 'unpaid',
+    paid_amount: '',
   });
 
   // ── Fetch ─────────────────────────────────────────────────────────
@@ -180,6 +182,7 @@ export default function CalendarPage() {
       assigned_staff_id: '',
       status: 'booked',
       payment_status: 'unpaid',
+      paid_amount: '',
     });
     setShowBooking(true);
   };
@@ -196,6 +199,7 @@ export default function CalendarPage() {
       assigned_staff_id: appt.assigned_staff_id ? String(appt.assigned_staff_id) : '',
       status: appt.status,
       payment_status: appt.payment_status || 'unpaid',
+      paid_amount: appt.payment_status === 'partial' ? String(appt.paid_amount || '') : '',
     });
     setShowBooking(true);
   };
@@ -233,6 +237,7 @@ export default function CalendarPage() {
         assigned_staff_id: formData.assigned_staff_id ? parseInt(formData.assigned_staff_id) : null,
         status: formData.status,
         payment_status: formData.payment_status,
+        paid_amount: formData.payment_status === 'partial' ? parseFloat(formData.paid_amount) || 0 : 0,
       };
       if (editingAppt) {
         await api.put(`/appointments/${editingAppt.id}`, payload);
@@ -472,7 +477,14 @@ export default function CalendarPage() {
               </div>
               <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Payment</span>
-                <span className={styles.detailValue} style={{ color: getPaymentColor(detailAppt.payment_status || 'unpaid'), fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem' }}>{detailAppt.payment_status || 'unpaid'}</span>
+                <span className={styles.detailValue} style={{ color: getPaymentColor(detailAppt.payment_status || 'unpaid'), fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                  {detailAppt.payment_status || 'unpaid'}
+                  {detailAppt.payment_status === 'partial' && detailAppt.paid_amount > 0 && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                      (Paid ₹{detailAppt.paid_amount} / ₹{detailAppt.total_amount})
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
 
@@ -595,12 +607,37 @@ export default function CalendarPage() {
               {/* Payment Status */}
               <div>
                 <label className="label">Payment Status</label>
-                <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value })}>
+                <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value, paid_amount: e.target.value !== 'partial' ? '' : formData.paid_amount })}>
                   {PAYMENT_STATUSES.map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Paid Amount (shown only for partial) */}
+              {formData.payment_status === 'partial' && (
+                <div>
+                  <label className="label">Paid Amount (₹)</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    placeholder="Enter amount paid"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={formData.paid_amount}
+                    onChange={e => setFormData({ ...formData, paid_amount: e.target.value })}
+                  />
+                  {formData.service_ids.length > 0 && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                      Total: ₹{services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0).toFixed(2)}
+                      {formData.paid_amount && (
+                        <> &middot; Balance: ₹{(services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0) - parseFloat(formData.paid_amount || '0')).toFixed(2)}</>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>

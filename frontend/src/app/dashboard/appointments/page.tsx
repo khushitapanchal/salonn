@@ -23,6 +23,7 @@ interface Appointment {
   time: string;
   status: string;
   total_amount: number;
+  paid_amount: number;
   services: Service[];
   assigned_staff_id: number | null;
   assigned_staff: StaffMember | null;
@@ -73,19 +74,20 @@ export default function AppointmentsPage() {
     assigned_staff_id: '',
     status: 'booked',
     payment_status: 'unpaid',
+    paid_amount: '',
   });
 
   const fetchData = async () => {
-    const [appRes, custRes, servRes, staffRes] = await Promise.all([
+    const [appRes, custRes, servRes, staffRes] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
       api.get('/services/'),
       api.get('/appointments/staff'),
     ]);
-    setAppointments(appRes.data);
-    setCustomers(custRes.data);
-    setServices(servRes.data);
-    setStaffMembers(staffRes.data);
+    if (appRes.status === 'fulfilled') setAppointments(appRes.value.data);
+    if (custRes.status === 'fulfilled') setCustomers(custRes.value.data);
+    if (servRes.status === 'fulfilled') setServices(servRes.value.data);
+    if (staffRes.status === 'fulfilled') setStaffMembers(staffRes.value.data);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -110,6 +112,7 @@ export default function AppointmentsPage() {
       assigned_staff_id: '',
       status: 'booked',
       payment_status: 'unpaid',
+      paid_amount: '',
     });
     setShowModal(true);
   };
@@ -126,6 +129,7 @@ export default function AppointmentsPage() {
       assigned_staff_id: appt.assigned_staff_id ? String(appt.assigned_staff_id) : '',
       status: appt.status,
       payment_status: appt.payment_status || 'unpaid',
+      paid_amount: appt.payment_status === 'partial' ? String(appt.paid_amount || '') : '',
     });
     setShowModal(true);
   };
@@ -163,6 +167,7 @@ export default function AppointmentsPage() {
         assigned_staff_id: formData.assigned_staff_id ? parseInt(formData.assigned_staff_id) : null,
         status: formData.status,
         payment_status: formData.payment_status,
+        paid_amount: formData.payment_status === 'partial' ? parseFloat(formData.paid_amount) || 0 : 0,
       };
       if (editingAppt) {
         await api.put(`/appointments/${editingAppt.id}`, payload);
@@ -265,6 +270,11 @@ export default function AppointmentsPage() {
                     }}>
                       {a.payment_status || 'unpaid'}
                     </span>
+                    {a.payment_status === 'partial' && a.paid_amount > 0 && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        Paid ₹{a.paid_amount} / ₹{a.total_amount}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontWeight: 600 }}>₹{a.total_amount}</td>
                   <td style={{ textAlign: 'right' }}>
@@ -378,12 +388,37 @@ export default function AppointmentsPage() {
               {/* Payment Status */}
               <div>
                 <label className="label">Payment Status</label>
-                <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value })}>
+                <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value, paid_amount: e.target.value !== 'partial' ? '' : formData.paid_amount })}>
                   {PAYMENT_STATUSES.map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Paid Amount (shown only for partial) */}
+              {formData.payment_status === 'partial' && (
+                <div>
+                  <label className="label">Paid Amount (₹)</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    placeholder="Enter amount paid"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={formData.paid_amount}
+                    onChange={e => setFormData({ ...formData, paid_amount: e.target.value })}
+                  />
+                  {formData.service_ids.length > 0 && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                      Total: ₹{services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0).toFixed(2)}
+                      {formData.paid_amount && (
+                        <> &middot; Balance: ₹{(services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0) - parseFloat(formData.paid_amount || '0')).toFixed(2)}</>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>

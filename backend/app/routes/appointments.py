@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
+import logging
 from .. import models, schemas, database, auth
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
@@ -12,7 +15,16 @@ def get_staff_members(db: Session = Depends(database.get_db), current_user: mode
 
 @router.get("/", response_model=List[schemas.AppointmentResponse])
 def get_appointments(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
-    return db.query(models.Appointment).all()
+    try:
+        appointments = db.query(models.Appointment).options(
+            joinedload(models.Appointment.customer),
+            joinedload(models.Appointment.assigned_staff),
+            joinedload(models.Appointment.services),
+        ).all()
+        return appointments
+    except Exception as e:
+        logger.error(f"Error fetching appointments: {e}")
+        raise
 
 @router.post("/", response_model=schemas.AppointmentResponse)
 def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -22,6 +34,14 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
 
     total_amount = sum([service.price for service in services])
 
+    # For "paid" status, paid_amount = total; for "unpaid", paid_amount = 0
+    if appointment.payment_status == "paid":
+        paid_amount = total_amount
+    elif appointment.payment_status == "unpaid":
+        paid_amount = 0
+    else:
+        paid_amount = appointment.paid_amount or 0
+
     new_app = models.Appointment(
         customer_id=appointment.customer_id,
         assigned_staff_id=appointment.assigned_staff_id,
@@ -29,6 +49,7 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
         time=appointment.time,
         status=appointment.status,
         payment_status=appointment.payment_status,
+        paid_amount=paid_amount,
         total_amount=total_amount,
         completed_at=datetime.utcnow() if appointment.status == "completed" else None,
     )
@@ -85,12 +106,21 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     elif appointment.status != "completed":
         app.completed_at = None
 
+    # For "paid" status, paid_amount = total; for "unpaid", paid_amount = 0
+    if appointment.payment_status == "paid":
+        paid_amount = total_amount
+    elif appointment.payment_status == "unpaid":
+        paid_amount = 0
+    else:
+        paid_amount = appointment.paid_amount or 0
+
     app.customer_id = appointment.customer_id
     app.assigned_staff_id = appointment.assigned_staff_id
     app.date = appointment.date
     app.time = appointment.time
     app.status = appointment.status
     app.payment_status = appointment.payment_status
+    app.paid_amount = paid_amount
     app.total_amount = total_amount
 
     # Replace service associations

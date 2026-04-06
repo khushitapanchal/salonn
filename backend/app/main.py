@@ -27,6 +27,12 @@ with engine.connect() as conn:
     if 'is_active' not in user_columns:
         conn.execute(text('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1'))
 
+    # Appointments: add paid_amount column if missing
+    if 'paid_amount' not in columns:
+        conn.execute(text('ALTER TABLE appointments ADD COLUMN paid_amount NUMERIC(10,2) DEFAULT 0'))
+        # Backfill: paid appointments get full amount, partial keep 0 (user will set manually)
+        conn.execute(text('UPDATE appointments SET paid_amount = total_amount WHERE payment_status = \'paid\''))
+
     # Appointment_services: migrate to new schema with id PK and nullable service_id
     as_columns = [col['name'] for col in inspector.get_columns('appointment_services')]
     if 'id' not in as_columns:

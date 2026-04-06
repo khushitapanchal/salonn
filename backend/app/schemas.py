@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, model_validator
-from typing import Optional, List, Any
+from pydantic import BaseModel, EmailStr, model_validator, field_serializer
+from typing import Optional, List, Any, Union
 from datetime import date, time, datetime
 
 class UserBase(BaseModel):
@@ -37,7 +37,7 @@ class CustomerCreate(CustomerBase):
 
 class CustomerResponse(CustomerBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -63,6 +63,7 @@ class AppointmentBase(BaseModel):
     time: time
     status: str = "booked"
     payment_status: str = "unpaid"
+    paid_amount: Optional[float] = 0.0
     assigned_staff_id: Optional[int] = None
     service_ids: List[int]
 
@@ -92,9 +93,10 @@ class AppointmentResponse(BaseModel):
     id: int
     customer_id: int
     date: date
-    time: time
+    time: Union[time, str]
     status: str
     payment_status: str = "unpaid"
+    paid_amount: float = 0.0
     total_amount: float
     completed_at: Optional[datetime] = None
     assigned_staff_id: Optional[int] = None
@@ -102,6 +104,12 @@ class AppointmentResponse(BaseModel):
     customer: CustomerResponse
     services: List[AppointmentServiceResponse] = []
     service_ids: List[int] = []
+
+    @field_serializer('time')
+    def serialize_time(self, value: Any) -> str:
+        if isinstance(value, time):
+            return value.strftime('%H:%M')
+        return str(value)
 
     @model_validator(mode='before')
     @classmethod

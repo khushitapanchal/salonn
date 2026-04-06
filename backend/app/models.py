@@ -50,6 +50,7 @@ class Appointment(Base):
     time = Column(Time)
     status = Column(String, default="booked") # "booked", "pending", "completed", "cancelled"
     payment_status = Column(String, default="unpaid") # "unpaid", "paid", "partial"
+    paid_amount = Column(Numeric(10, 2), default=0.00)
     total_amount = Column(Numeric(10, 2), default=0.00)
     completed_at = Column(DateTime, nullable=True)
 

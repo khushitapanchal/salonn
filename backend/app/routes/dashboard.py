@@ -6,11 +6,11 @@ from datetime import date, timedelta
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
-# Revenue filter: completed + paid only
+# Revenue filter: completed + (paid or partial)
 def _revenue_filter():
     return [
         models.Appointment.status == "completed",
-        models.Appointment.payment_status == "paid",
+        models.Appointment.payment_status.in_(["paid", "partial"]),
     ]
 
 @router.get("/stats")
@@ -30,20 +30,20 @@ def get_dashboard_stats(db: Session = Depends(database.get_db), current_user: mo
         models.Appointment.status.in_(["booked", "pending"])
     ).count()
 
-    # Total revenue (all time, completed + paid only)
-    total_revenue = db.query(func.sum(models.Appointment.total_amount)).filter(
+    # Total revenue (all time, completed + paid/partial — uses paid_amount for partial)
+    total_revenue = db.query(func.sum(models.Appointment.paid_amount)).filter(
         *_revenue_filter()
     ).scalar() or 0.0
 
     # Revenue today
-    revenue_today = db.query(func.sum(models.Appointment.total_amount)).filter(
+    revenue_today = db.query(func.sum(models.Appointment.paid_amount)).filter(
         models.Appointment.date == today,
         *_revenue_filter()
     ).scalar() or 0.0
 
     # Revenue this month
     first_of_month = today.replace(day=1)
-    revenue_month = db.query(func.sum(models.Appointment.total_amount)).filter(
+    revenue_month = db.query(func.sum(models.Appointment.paid_amount)).filter(
         models.Appointment.date >= first_of_month,
         *_revenue_filter()
     ).scalar() or 0.0
@@ -52,7 +52,7 @@ def get_dashboard_stats(db: Session = Depends(database.get_db), current_user: mo
     revenue_7days = []
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
-        day_rev = db.query(func.sum(models.Appointment.total_amount)).filter(
+        day_rev = db.query(func.sum(models.Appointment.paid_amount)).filter(
             models.Appointment.date == d,
             *_revenue_filter()
         ).scalar() or 0.0
@@ -88,20 +88,21 @@ def get_dashboard_stats(db: Session = Depends(database.get_db), current_user: mo
             "time": str(a.time)[:5],
             "status": a.status,
             "payment_status": a.payment_status or "unpaid",
+            "paid_amount": float(a.paid_amount or 0),
             "total_amount": float(a.total_amount),
             "services": [s.service_name for s in a.services],
             "staff_name": a.assigned_staff.name if a.assigned_staff else None,
         })
 
-    # Top customers by revenue (completed + paid only)
+    # Top customers by revenue (completed + paid/partial)
     top_customers = db.query(
         models.Customer.name,
         func.count(models.Appointment.id).label("visits"),
-        func.sum(models.Appointment.total_amount).label("spent")
+        func.sum(models.Appointment.paid_amount).label("spent")
     ).join(models.Appointment).filter(
         *_revenue_filter()
     ).group_by(models.Customer.id).order_by(
-        func.sum(models.Appointment.total_amount).desc()
+        func.sum(models.Appointment.paid_amount).desc()
     ).limit(5).all()
 
     top_customers_list = [
