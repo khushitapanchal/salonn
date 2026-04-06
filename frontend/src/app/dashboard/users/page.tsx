@@ -63,8 +63,7 @@ export default function UsersPage() {
   const openStaffDetail = async (u: UserItem) => {
     setDetailLoading(true); setDetailData(null);
     try { const res = await api.get(`/users/${u.id}/performance`); setDetailData(res.data); }
-    catch { alert('Error loading staff details.'); }
-    finally { setDetailLoading(false); }
+    catch (err: any) { alert(err?.response?.data?.detail || 'Error loading staff details.'); setDetailLoading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
