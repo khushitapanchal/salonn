@@ -35,7 +35,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | SubService | null>(null);
-  const [formData, setFormData] = useState({ name: '', category: '', sub_category: '' as string, price: 0, duration: 30, parent_id: null as number | null });
+  const [formData, setFormData] = useState({ name: '', category: '', sub_category: '' as string, price: '', duration: '', parent_id: null as number | null });
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -108,7 +108,7 @@ export default function ServicesPage() {
     setNewSubCatName('');
     // Open add service modal with this sub-category pre-filled
     setEditingService(null);
-    setFormData({ name: '', category, sub_category: trimmed, price: 0, duration: 30, parent_id: null });
+    setFormData({ name: '', category, sub_category: trimmed, price: '', duration: '', parent_id: null });
     setShowNewCategory(false);
     setNewCategoryName('');
     setShowModal(true);
@@ -145,7 +145,7 @@ export default function ServicesPage() {
 
   const openAddModal = () => {
     setEditingService(null);
-    setFormData({ name: '', category: '', sub_category: '', price: 0, duration: 30, parent_id: null });
+    setFormData({ name: '', category: '', sub_category: '', price: '', duration: '', parent_id: null });
     setShowNewCategory(false);
     setNewCategoryName('');
     setShowModal(true);
@@ -153,7 +153,7 @@ export default function ServicesPage() {
 
   const openAddSubServiceModal = (parent: Service) => {
     setEditingService(null);
-    setFormData({ name: '', category: parent.category, sub_category: parent.sub_category || '', price: 0, duration: 30, parent_id: parent.id });
+    setFormData({ name: '', category: parent.category, sub_category: parent.sub_category || '', price: '', duration: '', parent_id: parent.id });
     setShowNewCategory(false);
     setShowModal(true);
   };
@@ -164,8 +164,8 @@ export default function ServicesPage() {
       name: service.name,
       category: service.category,
       sub_category: service.sub_category || '',
-      price: service.price,
-      duration: service.duration,
+      price: String(service.price),
+      duration: String(service.duration),
       parent_id: service.parent_id || null,
     });
     setShowNewCategory(false);
@@ -185,7 +185,14 @@ export default function ServicesPage() {
     e.preventDefault();
     try {
       const subCat = formData.sub_category === '__new__' ? '' : formData.sub_category;
-      const payload = { ...formData, sub_category: subCat || null };
+      const payload = {
+        name: formData.name,
+        category: formData.category,
+        sub_category: subCat || null,
+        price: parseFloat(formData.price) || 0,
+        duration: parseInt(formData.duration) || 0,
+        parent_id: formData.parent_id,
+      };
       if (editingService) {
         await api.put(`/services/${editingService.id}`, payload);
       } else {
@@ -370,7 +377,7 @@ export default function ServicesPage() {
                         <button
                           onClick={() => {
                             setEditingService(null);
-                            setFormData({ name: '', category, sub_category: subCat, price: 0, duration: 30, parent_id: null });
+                            setFormData({ name: '', category, sub_category: subCat, price: '', duration: '', parent_id: null });
                             setShowNewCategory(false);
                             setShowModal(true);
                           }}
@@ -516,11 +523,11 @@ export default function ServicesPage() {
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' as const }}>
                 <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <label className="label">Price (₹)</label>
-                  <input type="number" step="0.01" className="input-field" required value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })} />
+                  <input type="number" step="0.01" min="0" className="input-field" required placeholder="e.g. 500" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
                 </div>
                 <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <label className="label">Duration (mins)</label>
-                  <input type="number" className="input-field" required value={formData.duration} onChange={e => setFormData({ ...formData, duration: parseInt(e.target.value) })} />
+                  <input type="number" min="0" className="input-field" required placeholder="e.g. 30" value={formData.duration} onChange={e => setFormData({ ...formData, duration: e.target.value })} />
                 </div>
               </div>
 
