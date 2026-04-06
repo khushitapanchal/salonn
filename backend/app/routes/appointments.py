@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
 import logging
+import traceback
 from .. import models, schemas, database, auth
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,43 @@ router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 @router.get("/staff", response_model=List[schemas.UserResponse])
 def get_staff_members(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     return db.query(models.User).all()
+
+@router.get("/debug")
+def debug_appointments(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Temporary debug endpoint to see raw appointment data and errors."""
+    try:
+        appointments = db.query(models.Appointment).options(
+            joinedload(models.Appointment.customer),
+            joinedload(models.Appointment.assigned_staff),
+            joinedload(models.Appointment.services),
+        ).all()
+        results = []
+        for a in appointments:
+            try:
+                serialized = schemas.AppointmentResponse.model_validate(a)
+                results.append({"id": a.id, "status": "ok"})
+            except Exception as e:
+                results.append({
+                    "id": a.id,
+                    "status": "error",
+                    "error": str(e),
+                    "raw": {
+                        "date": str(a.date),
+                        "time": str(a.time),
+                        "time_type": type(a.time).__name__,
+                        "total_amount": str(a.total_amount),
+                        "total_amount_type": type(a.total_amount).__name__,
+                        "paid_amount": str(a.paid_amount),
+                        "paid_amount_type": type(a.paid_amount).__name__,
+                        "customer": a.customer.name if a.customer else None,
+                        "customer_created_at": str(a.customer.created_at) if a.customer else None,
+                        "services_count": len(a.services),
+                        "payment_status": a.payment_status,
+                    }
+                })
+        return {"count": len(appointments), "results": results}
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 @router.get("/", response_model=List[schemas.AppointmentResponse])
 def get_appointments(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):

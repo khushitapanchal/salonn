@@ -95,16 +95,16 @@ export default function CalendarPage() {
 
   // ── Fetch ─────────────────────────────────────────────────────────
   const fetchData = async () => {
-    const [a, c, s, st] = await Promise.all([
+    const [a, c, s, st] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
       api.get('/services/'),
       api.get('/appointments/staff'),
     ]);
-    setAppointments(a.data);
-    setCustomers(c.data);
-    setServices(s.data);
-    setStaffMembers(st.data);
+    if (a.status === 'fulfilled') setAppointments(a.value.data);
+    if (c.status === 'fulfilled') setCustomers(c.value.data);
+    if (s.status === 'fulfilled') setServices(s.value.data);
+    if (st.status === 'fulfilled') setStaffMembers(st.value.data);
   };
 
   useEffect(() => { fetchData(); }, []);
