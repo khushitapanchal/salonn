@@ -40,7 +40,6 @@ export default function ServicesPage() {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set());
-  const [expandedSubCats, setExpandedSubCats] = useState<Set<string>>(new Set());
 
   // Sub-category inline add
   const [addingSubCatFor, setAddingSubCatFor] = useState<string | null>(null);
@@ -86,13 +85,6 @@ export default function ServicesPage() {
     });
   };
 
-  const toggleSubCat = (key: string) => {
-    setExpandedSubCats(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
 
   // Category actions
   const handleDeleteCategory = async (category: string) => {
@@ -355,45 +347,54 @@ export default function ServicesPage() {
                 </div>
               )}
 
-              {/* Sub-categories */}
+              {/* Sub-category groups — always visible as separate sections */}
               {subCategories.map(subCat => {
-                const subCatKey = `${category}__${subCat}`;
                 const subCatServices = categoryServices.filter(s => s.sub_category === subCat);
-                const isExpanded = expandedSubCats.has(subCatKey);
 
                 return (
-                  <div key={subCatKey} style={{ marginTop: '0.75rem', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                  <div key={`${category}__${subCat}`} style={{ marginTop: '1rem' }}>
                     {/* Sub-category header */}
-                    <div
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '0.6rem 1rem', background: 'var(--bg-color)', cursor: 'pointer',
-                      }}
-                      onClick={() => toggleSubCat(subCatKey)}
-                    >
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.6rem 1rem', background: 'var(--bg-color)', borderRadius: '0.5rem 0.5rem 0 0',
+                      borderBottom: '2px solid var(--primary)',
+                    }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <ChevronRight size={14} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', color: 'var(--primary)' }} />
-                        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>{subCat}</span>
-                        <span style={{ fontSize: '0.7rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 600 }}>
-                          {subCatServices.length}
+                        <div style={{ width: '3px', height: '1.2rem', background: 'var(--primary)', borderRadius: '2px' }} />
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{subCat}</span>
+                        <span style={{ fontSize: '0.7rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontWeight: 600 }}>
+                          {subCatServices.length} service{subCatServices.length > 1 ? 's' : ''}
                         </span>
                       </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteSubCategory(category, subCat); }}
-                        className={custStyles.actionBtn}
-                        style={{ color: 'var(--danger)' }}
-                        title="Delete sub-category"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button
+                          onClick={() => {
+                            setEditingService(null);
+                            setFormData({ name: '', category, sub_category: subCat, price: 0, duration: 30, parent_id: null });
+                            setShowNewCategory(false);
+                            setShowModal(true);
+                          }}
+                          title={`Add service to ${subCat}`}
+                          className={custStyles.actionBtn}
+                          style={{ color: 'var(--primary)' }}
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSubCategory(category, subCat)}
+                          className={custStyles.actionBtn}
+                          style={{ color: 'var(--danger)' }}
+                          title="Delete sub-category"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Sub-category services */}
-                    {isExpanded && (
-                      <div className={styles.grid} style={{ padding: '0.75rem' }}>
-                        {subCatServices.map(s => renderServiceCard(s))}
-                      </div>
-                    )}
+                    {/* Sub-category services grid */}
+                    <div className={styles.grid} style={{ padding: '0.75rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}>
+                      {subCatServices.map(s => renderServiceCard(s))}
+                    </div>
                   </div>
                 );
               })}
