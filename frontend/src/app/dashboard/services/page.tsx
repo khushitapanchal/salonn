@@ -322,7 +322,7 @@ export default function ServicesPage() {
           const servicesWithoutSubCat = categoryServices.filter(s => !s.sub_category);
 
           return (
-            <div key={category} style={{ marginBottom: '2rem' }}>
+            <div key={category} style={{ marginBottom: '3.5rem' }}>
               {/* Category Header */}
               <div className={styles.categoryHeader} style={{ justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -371,18 +371,17 @@ export default function ServicesPage() {
                 const subCatServices = categoryServices.filter(s => s.sub_category === subCat);
 
                 return (
-                  <div key={`${category}__${subCat}`} style={{ marginTop: '1rem' }}>
+                  <div key={`${category}__${subCat}`} style={{ marginTop: '1.5rem' }}>
                     {/* Sub-category header */}
                     <div style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.6rem 1rem', background: 'var(--bg-color)', borderRadius: '0.5rem 0.5rem 0 0',
-                      borderBottom: '2px solid var(--primary)',
+                      padding: '0.75rem 1.25rem', background: 'var(--bg-color)', borderRadius: '0.5rem 0.5rem 0 0',
+                      borderBottom: '2px solid var(--primary)', borderLeft: '3px solid var(--primary)',
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '3px', height: '1.2rem', background: 'var(--primary)', borderRadius: '2px' }} />
-                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{subCat}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>{subCat}</span>
                         <span style={{ fontSize: '0.7rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontWeight: 600 }}>
-                          {subCatServices.length} service{subCatServices.length > 1 ? 's' : ''}
+                          {subCatServices.length}
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -411,13 +410,13 @@ export default function ServicesPage() {
                     </div>
 
                     {/* Sub-category services grid */}
-                    <div style={{ padding: '0.75rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}>
+                    <div style={{ padding: '1rem 1.25rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem', background: 'var(--card-bg)' }}>
                       {subCatServices.length > 0 ? (
-                        <div className={styles.grid}>
+                        <div className={styles.grid} style={{ marginTop: 0 }}>
                           {subCatServices.map(s => renderServiceCard(s, true))}
                         </div>
                       ) : (
-                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1rem 0', margin: 0 }}>
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1.5rem 0', margin: 0 }}>
                           No services yet. Click <strong>+</strong> to add a service.
                         </p>
                       )}
