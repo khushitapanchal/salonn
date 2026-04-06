@@ -411,29 +411,45 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Paid Amount (shown only for partial) */}
-              {formData.payment_status === 'partial' && (
-                <div>
-                  <label className="label">Paid Amount (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    placeholder="Enter amount paid"
-                    min="0"
-                    step="0.01"
-                    required
-                    value={formData.paid_amount}
-                    onChange={e => setFormData({ ...formData, paid_amount: e.target.value })}
-                  />
-                  {formData.service_ids.length > 0 && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                      Total: ₹{services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0).toFixed(2)}
-                      {formData.paid_amount && (
-                        <> &middot; Balance: ₹{(services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0) - parseFloat(formData.paid_amount || '0')).toFixed(2)}</>
-                      )}
-                    </p>
-                  )}
-                </div>
-              )}
+              {formData.payment_status === 'partial' && (() => {
+                const totalAmount = services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
+                const paidAmount = parseFloat(formData.paid_amount) || 0;
+                const balance = totalAmount - paidAmount;
+                return (
+                  <div style={{ background: 'var(--bg-color)', borderRadius: '0.75rem', padding: '1rem 1.25rem', border: '1px solid var(--border)' }}>
+                    {formData.service_ids.length > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Amount</span>
+                        <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-main)' }}>₹{totalAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div>
+                      <label className="label">Amount Paid (₹)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        placeholder="Enter amount paid"
+                        min="0"
+                        max={totalAmount || undefined}
+                        step="0.01"
+                        required
+                        value={formData.paid_amount}
+                        onChange={e => setFormData({ ...formData, paid_amount: e.target.value })}
+                      />
+                    </div>
+                    {formData.service_ids.length > 0 && paidAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                          {balance > 0 ? 'Remaining Balance' : 'Fully Paid'}
+                        </span>
+                        <span style={{ fontSize: '1.125rem', fontWeight: 700, color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                          ₹{Math.abs(balance).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
