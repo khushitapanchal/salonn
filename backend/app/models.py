@@ -40,6 +40,9 @@ class Service(Base):
     category = Column(String, index=True)
     price = Column(Numeric(10, 2))
     duration = Column(Integer) # in minutes
+    parent_id = Column(Integer, ForeignKey("services.id"), nullable=True)
+
+    parent = relationship("Service", remote_side="Service.id", backref="sub_services")
 
 class Appointment(Base):
     __tablename__ = "appointments"

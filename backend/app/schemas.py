@@ -47,6 +47,7 @@ class ServiceBase(BaseModel):
     category: str
     price: float
     duration: int
+    parent_id: Optional[int] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -58,8 +59,27 @@ class ServiceBase(BaseModel):
 class ServiceCreate(ServiceBase):
     pass
 
+class SubServiceResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    price: float
+    duration: int
+    parent_id: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_decimal(cls, data: Any) -> Any:
+        if hasattr(data, 'price') and data.price is not None:
+            data.price = float(data.price)
+        return data
+
+    class Config:
+        from_attributes = True
+
 class ServiceResponse(ServiceBase):
     id: int
+    sub_services: List[SubServiceResponse] = []
 
     class Config:
         from_attributes = True

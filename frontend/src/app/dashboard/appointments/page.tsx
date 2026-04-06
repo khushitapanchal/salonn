@@ -81,7 +81,7 @@ export default function AppointmentsPage() {
     const [appRes, custRes, servRes, staffRes] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
-      api.get('/services/'),
+      api.get('/services/all'),
       api.get('/appointments/staff'),
     ]);
     if (appRes.status === 'fulfilled') setAppointments(appRes.value.data);

@@ -98,7 +98,7 @@ export default function CalendarPage() {
     const [a, c, s, st] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
-      api.get('/services/'),
+      api.get('/services/all'),
       api.get('/appointments/staff'),
     ]);
     if (a.status === 'fulfilled') setAppointments(a.value.data);
