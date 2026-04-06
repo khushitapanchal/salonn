@@ -107,6 +107,10 @@ try:
                 WHERE (service_name IS NULL OR price_at_booking IS NULL) AND service_id IS NOT NULL
             '''))
 
+            # Appointments: add payment_mode column
+            if 'payment_mode' not in columns:
+                conn.execute(text('ALTER TABLE appointments ADD COLUMN payment_mode VARCHAR'))
+
             # Services: add parent_id and sub_category columns
             service_columns = [col['name'] for col in inspector.get_columns('services')]
             if 'parent_id' not in service_columns:

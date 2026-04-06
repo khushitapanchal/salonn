@@ -90,6 +90,7 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
         time=appointment.time,
         status=appointment.status,
         payment_status=appointment.payment_status,
+        payment_mode=appointment.payment_mode,
         paid_amount=paid_amount,
         total_amount=total_amount,
         completed_at=datetime.utcnow() if appointment.status == "completed" else None,
@@ -161,6 +162,7 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     app.time = appointment.time
     app.status = appointment.status
     app.payment_status = appointment.payment_status
+    app.payment_mode = appointment.payment_mode
     app.paid_amount = paid_amount
     app.total_amount = total_amount
 

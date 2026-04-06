@@ -36,6 +36,7 @@ interface Appointment {
   assigned_staff_id: number | null;
   assigned_staff: StaffMember | null;
   payment_status: string;
+  payment_mode: string | null;
   completed_at: string | null;
 }
 
@@ -90,6 +91,7 @@ export default function CalendarPage() {
     assigned_staff_id: '',
     status: 'booked',
     payment_status: 'unpaid',
+    payment_mode: '',
     paid_amount: '',
   });
 
@@ -184,6 +186,7 @@ export default function CalendarPage() {
       assigned_staff_id: '',
       status: 'booked',
       payment_status: 'unpaid',
+      payment_mode: '',
       paid_amount: '',
     });
     setShowBooking(true);
@@ -201,6 +204,7 @@ export default function CalendarPage() {
       assigned_staff_id: appt.assigned_staff_id ? String(appt.assigned_staff_id) : '',
       status: appt.status,
       payment_status: appt.payment_status || 'unpaid',
+      payment_mode: appt.payment_mode || '',
       paid_amount: appt.payment_status === 'partial' ? String(appt.paid_amount || '') : '',
     });
     setShowBooking(true);
@@ -239,6 +243,7 @@ export default function CalendarPage() {
         assigned_staff_id: formData.assigned_staff_id ? parseInt(formData.assigned_staff_id) : null,
         status: formData.status,
         payment_status: formData.payment_status,
+        payment_mode: formData.payment_mode || null,
         paid_amount: formData.payment_status === 'partial' ? parseFloat(formData.paid_amount) || 0 : 0,
       };
       if (editingAppt) {
@@ -616,14 +621,26 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              {/* Payment Status */}
-              <div>
-                <label className="label">Payment Status</label>
-                <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value, paid_amount: e.target.value !== 'partial' ? '' : formData.paid_amount })}>
-                  {PAYMENT_STATUSES.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
+              {/* Payment Status & Mode */}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' as const }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <label className="label">Payment Status</label>
+                  <select className="input-field" value={formData.payment_status} onChange={e => setFormData({ ...formData, payment_status: e.target.value, paid_amount: e.target.value !== 'partial' ? '' : formData.paid_amount, payment_mode: e.target.value === 'unpaid' ? '' : formData.payment_mode })}>
+                    {PAYMENT_STATUSES.map(s => (
+                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                {formData.payment_status !== 'unpaid' && (
+                  <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                    <label className="label">Payment Mode</label>
+                    <select className="input-field" value={formData.payment_mode} onChange={e => setFormData({ ...formData, payment_mode: e.target.value })}>
+                      <option value="">-- Select mode --</option>
+                      <option value="cash">Cash</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Paid Amount (shown only for partial) */}

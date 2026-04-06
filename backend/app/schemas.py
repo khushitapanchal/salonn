@@ -99,6 +99,7 @@ class AppointmentBase(BaseModel):
     time: time
     status: str = "booked"
     payment_status: str = "unpaid"
+    payment_mode: Optional[str] = None
     paid_amount: Optional[float] = 0.0
     assigned_staff_id: Optional[int] = None
     service_ids: List[int]
@@ -132,6 +133,7 @@ class AppointmentResponse(BaseModel):
     time: Union[time, str]
     status: str
     payment_status: str = "unpaid"
+    payment_mode: Optional[str] = None
     paid_amount: float = 0.0
     total_amount: float = 0.0
     completed_at: Optional[datetime] = None
