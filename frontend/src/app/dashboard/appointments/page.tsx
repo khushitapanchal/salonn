@@ -130,7 +130,7 @@ export default function AppointmentsPage() {
       customer_id: String(appt.customer.id),
       date: appt.date,
       time: appt.time,
-      service_ids: appt.services.map(s => s.id),
+      service_ids: appt.services.map(s => s.id).filter((id): id is number => id != null),
       assigned_staff_id: appt.assigned_staff_id ? String(appt.assigned_staff_id) : '',
       status: appt.status,
       payment_status: appt.payment_status || 'unpaid',
