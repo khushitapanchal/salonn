@@ -46,6 +46,9 @@ export default function ServicesPage() {
   const [newSubCatName, setNewSubCatName] = useState('');
   // Track manually created empty sub-categories (before any service is added)
   const [emptySubCats, setEmptySubCats] = useState<Record<string, string[]>>({});
+  // "Add new sub-category" mode in the modal
+  const [showNewSubCat, setShowNewSubCat] = useState(false);
+  const [newSubCatInput, setNewSubCatInput] = useState('');
 
   const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
 
@@ -156,6 +159,8 @@ export default function ServicesPage() {
     setFormData({ name: '', category: '', sub_category: '', price: '', duration: '', parent_id: null });
     setShowNewCategory(false);
     setNewCategoryName('');
+    setShowNewSubCat(false);
+    setNewSubCatInput('');
     setShowModal(true);
   };
 
@@ -178,6 +183,8 @@ export default function ServicesPage() {
     });
     setShowNewCategory(false);
     setNewCategoryName('');
+    setShowNewSubCat(false);
+    setNewSubCatInput('');
     setShowModal(true);
   };
 
@@ -192,11 +199,10 @@ export default function ServicesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const subCat = formData.sub_category === '__new__' ? '' : formData.sub_category;
       const payload = {
         name: formData.name,
         category: formData.category,
-        sub_category: subCat || null,
+        sub_category: formData.sub_category || null,
         price: parseFloat(formData.price) || 0,
         duration: parseInt(formData.duration) || 0,
         parent_id: formData.parent_id,
@@ -208,6 +214,8 @@ export default function ServicesPage() {
       }
       setShowModal(false);
       setEditingService(null);
+      setShowNewSubCat(false);
+      setNewSubCatInput('');
       fetchServices();
     } catch { alert(editingService ? "Error updating service." : "Error adding service."); }
   };
@@ -490,15 +498,17 @@ export default function ServicesPage() {
                   {formData.category && (
                     <div>
                       <label className="label">Sub-Category <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
-                      {getExistingSubCats(formData.category).length > 0 ? (
+                      {!showNewSubCat ? (
                         <>
                           <div style={{ position: 'relative' }}>
                             <select
                               className="input-field"
-                              value={formData.sub_category === '__new__' ? '__new__' : formData.sub_category}
+                              value={formData.sub_category}
                               onChange={e => {
                                 if (e.target.value === '__new__') {
-                                  setFormData({ ...formData, sub_category: '__new__' });
+                                  setShowNewSubCat(true);
+                                  setNewSubCatInput('');
+                                  setFormData({ ...formData, sub_category: '' });
                                 } else {
                                   setFormData({ ...formData, sub_category: e.target.value });
                                 }
@@ -513,26 +523,53 @@ export default function ServicesPage() {
                             </select>
                             <ChevronDown size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
                           </div>
-                          {formData.sub_category === '__new__' && (
-                            <input
-                              className="input-field"
-                              placeholder="Enter new sub-category name"
-                              autoFocus
-                              onChange={e => {
-                                const val = e.target.value;
-                                if (val) setFormData(prev => ({ ...prev, sub_category: val }));
-                              }}
-                              style={{ marginTop: '0.5rem' }}
-                            />
-                          )}
                         </>
                       ) : (
-                        <input
-                          className="input-field"
-                          placeholder="Enter sub-category name (e.g. Hair Cutting)"
-                          value={formData.sub_category}
-                          onChange={e => setFormData({ ...formData, sub_category: e.target.value })}
-                        />
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <input
+                            className="input-field"
+                            placeholder="Enter new sub-category name"
+                            autoFocus
+                            value={newSubCatInput}
+                            onChange={e => setNewSubCatInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (newSubCatInput.trim()) {
+                                  setFormData({ ...formData, sub_category: newSubCatInput.trim() });
+                                  setShowNewSubCat(false);
+                                }
+                              }
+                            }}
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                            onClick={() => {
+                              if (newSubCatInput.trim()) {
+                                setFormData({ ...formData, sub_category: newSubCatInput.trim() });
+                                setShowNewSubCat(false);
+                              }
+                            }}
+                          >
+                            Set
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: 'var(--text-muted)' }}
+                            onClick={() => { setShowNewSubCat(false); setNewSubCatInput(''); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                      {formData.sub_category && !showNewSubCat && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.25rem', fontWeight: 500 }}>
+                          This service will be grouped under: <strong>{formData.category} &gt; {formData.sub_category}</strong>
+                        </p>
                       )}
                     </div>
                   )}
