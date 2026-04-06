@@ -192,7 +192,8 @@ export default function ServicesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = { ...formData, sub_category: formData.sub_category || null };
+      const subCat = formData.sub_category === '__new__' ? '' : formData.sub_category;
+      const payload = { ...formData, sub_category: subCat || null };
       if (editingService) {
         await api.put(`/services/${editingService.id}`, payload);
       } else {
@@ -462,27 +463,50 @@ export default function ServicesPage() {
                   {formData.category && (
                     <div>
                       <label className="label">Sub-Category <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
-                      <div style={{ position: 'relative' }}>
-                        <select
+                      {getExistingSubCats(formData.category).length > 0 ? (
+                        <>
+                          <div style={{ position: 'relative' }}>
+                            <select
+                              className="input-field"
+                              value={formData.sub_category === '__new__' ? '__new__' : formData.sub_category}
+                              onChange={e => {
+                                if (e.target.value === '__new__') {
+                                  setFormData({ ...formData, sub_category: '__new__' });
+                                } else {
+                                  setFormData({ ...formData, sub_category: e.target.value });
+                                }
+                              }}
+                              style={{ appearance: 'none', paddingRight: '2.5rem', cursor: 'pointer' }}
+                            >
+                              <option value="">-- No sub-category --</option>
+                              {getExistingSubCats(formData.category).map(sc => (
+                                <option key={sc} value={sc}>{sc}</option>
+                              ))}
+                              <option value="__new__">+ Add New Sub-Category</option>
+                            </select>
+                            <ChevronDown size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
+                          </div>
+                          {formData.sub_category === '__new__' && (
+                            <input
+                              className="input-field"
+                              placeholder="Enter new sub-category name"
+                              autoFocus
+                              onChange={e => {
+                                const val = e.target.value;
+                                if (val) setFormData(prev => ({ ...prev, sub_category: val }));
+                              }}
+                              style={{ marginTop: '0.5rem' }}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <input
                           className="input-field"
+                          placeholder="Enter sub-category name (e.g. Hair Cutting)"
                           value={formData.sub_category}
                           onChange={e => setFormData({ ...formData, sub_category: e.target.value })}
-                          style={{ appearance: 'none', paddingRight: '2.5rem', cursor: 'pointer' }}
-                        >
-                          <option value="">-- No sub-category --</option>
-                          {getExistingSubCats(formData.category).map(sc => (
-                            <option key={sc} value={sc}>{sc}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
-                      </div>
-                      <input
-                        className="input-field"
-                        placeholder="Or type a new sub-category name"
-                        value={getExistingSubCats(formData.category).includes(formData.sub_category) ? '' : formData.sub_category}
-                        onChange={e => setFormData({ ...formData, sub_category: e.target.value })}
-                        style={{ marginTop: '0.5rem' }}
-                      />
+                        />
+                      )}
                     </div>
                   )}
                 </>
