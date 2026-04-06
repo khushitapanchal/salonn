@@ -79,12 +79,19 @@ class SubServiceResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    def model_post_init(self, __context: Any) -> None:
+        self.model_fields_set.update(self.model_fields.keys())
+
 class ServiceResponse(ServiceBase):
     id: int
     sub_services: List[SubServiceResponse] = []
 
     class Config:
         from_attributes = True
+
+    def model_post_init(self, __context: Any) -> None:
+        """Ensure all fields are marked as set so FastAPI includes them in response."""
+        self.model_fields_set.update(self.model_fields.keys())
 
 class AppointmentBase(BaseModel):
     customer_id: int
