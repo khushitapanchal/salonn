@@ -231,22 +231,20 @@ export default function ServicesPage() {
   };
 
   // Render a service card
-  const renderServiceCard = (s: Service, hideCategory?: boolean) => (
+  const renderServiceCard = (s: Service) => (
     <div key={s.id} className={dashStyles.statCard} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       {/* Main content */}
       <div style={{ padding: '1.25rem 1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
             <div className={dashStyles.statIcon} style={{ background: 'var(--primary-light)', color: 'var(--primary)', width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', flexShrink: 0 }}>
               <Scissors size={18} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h3 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)', margin: 0, lineHeight: 1.3 }}>{s.name}</h3>
-              {!hideCategory && (
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.15rem', display: 'block' }}>
-                  {s.category}
-                </span>
-              )}
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.15rem', display: 'block' }}>
+                {s.sub_category ? `${s.category} · ${s.sub_category}` : s.category}
+              </span>
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
@@ -424,7 +422,7 @@ export default function ServicesPage() {
                     {/* Sub-category services grid */}
                     {subCatServices.length > 0 ? (
                       <div className={styles.grid}>
-                        {subCatServices.map(s => renderServiceCard(s, true))}
+                        {subCatServices.map(s => renderServiceCard(s))}
                       </div>
                     ) : (
                       <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem', background: 'var(--bg-color)' }}>
