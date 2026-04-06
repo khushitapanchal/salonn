@@ -44,6 +44,8 @@ export default function ServicesPage() {
   // Sub-category inline add
   const [addingSubCatFor, setAddingSubCatFor] = useState<string | null>(null);
   const [newSubCatName, setNewSubCatName] = useState('');
+  // Track manually created empty sub-categories (before any service is added)
+  const [emptySubCats, setEmptySubCats] = useState<Record<string, string[]>>({});
 
   const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
 
@@ -69,9 +71,11 @@ export default function ServicesPage() {
     return acc;
   }, {});
 
-  const getSubCategories = (categoryServices: Service[]): string[] => {
+  const getSubCategories = (category: string, categoryServices: Service[]): string[] => {
     const subs = new Set<string>();
     categoryServices.forEach(s => { if (s.sub_category) subs.add(s.sub_category); });
+    // Include manually created empty sub-categories
+    (emptySubCats[category] || []).forEach(sc => subs.add(sc));
     return Array.from(subs).sort();
   };
 
@@ -106,18 +110,22 @@ export default function ServicesPage() {
     if (!trimmed) return;
     setAddingSubCatFor(null);
     setNewSubCatName('');
-    // Open add service modal with this sub-category pre-filled
-    setEditingService(null);
-    setFormData({ name: '', category, sub_category: trimmed, price: '', duration: '', parent_id: null });
-    setShowNewCategory(false);
-    setNewCategoryName('');
-    setShowModal(true);
+    // Create an empty sub-category group (shows immediately, even without services)
+    setEmptySubCats(prev => ({
+      ...prev,
+      [category]: [...(prev[category] || []).filter(sc => sc !== trimmed), trimmed],
+    }));
   };
 
   const handleDeleteSubCategory = async (category: string, subCategory: string) => {
     if (!window.confirm(`Delete sub-category "${subCategory}" and all its services?`)) return;
     try {
       await api.delete(`/services/category/${encodeURIComponent(category)}/sub/${encodeURIComponent(subCategory)}`);
+      // Also remove from empty sub-cats state
+      setEmptySubCats(prev => ({
+        ...prev,
+        [category]: (prev[category] || []).filter(sc => sc !== subCategory),
+      }));
       fetchServices();
     } catch { alert('Error deleting sub-category. Are you admin?'); }
   };
@@ -210,6 +218,7 @@ export default function ServicesPage() {
   const getExistingSubCats = (category: string): string[] => {
     const subs = new Set<string>();
     services.filter(s => s.category === category && s.sub_category).forEach(s => subs.add(s.sub_category!));
+    (emptySubCats[category] || []).forEach(sc => subs.add(sc));
     return Array.from(subs).sort();
   };
 
@@ -301,7 +310,7 @@ export default function ServicesPage() {
       ) : (
         sortedCategories.map(category => {
           const categoryServices = groupedByCategory[category];
-          const subCategories = getSubCategories(categoryServices);
+          const subCategories = getSubCategories(category, categoryServices);
           const servicesWithoutSubCat = categoryServices.filter(s => !s.sub_category);
 
           return (
@@ -401,8 +410,16 @@ export default function ServicesPage() {
                     </div>
 
                     {/* Sub-category services grid */}
-                    <div className={styles.grid} style={{ padding: '0.75rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}>
-                      {subCatServices.map(s => renderServiceCard(s, true))}
+                    <div style={{ padding: '0.75rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}>
+                      {subCatServices.length > 0 ? (
+                        <div className={styles.grid}>
+                          {subCatServices.map(s => renderServiceCard(s, true))}
+                        </div>
+                      ) : (
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1rem 0', margin: 0 }}>
+                          No services yet. Click <strong>+</strong> to add a service.
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
