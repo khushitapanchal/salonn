@@ -184,8 +184,9 @@ export default function AppointmentsPage() {
       setShowModal(false);
       setEditingAppt(null);
       fetchData();
-    } catch {
-      alert(editingAppt ? 'Error updating appointment' : 'Error booking appointment');
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      alert(editingAppt ? `Error updating: ${detail || err.message}` : `Error booking: ${detail || err.message}`);
     }
   };
 
@@ -427,8 +428,8 @@ export default function AppointmentsPage() {
                 {formData.payment_status !== 'unpaid' && (
                   <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                     <label className="label">Payment Mode</label>
-                    <select className="input-field" required value={formData.payment_mode} onChange={e => setFormData({ ...formData, payment_mode: e.target.value })}>
-                      <option value="" disabled>-- Select mode --</option>
+                    <select className="input-field" value={formData.payment_mode} onChange={e => setFormData({ ...formData, payment_mode: e.target.value })}>
+                      <option value="">-- Select mode --</option>
                       <option value="cash">Cash</option>
                       <option value="online">Online</option>
                     </select>
