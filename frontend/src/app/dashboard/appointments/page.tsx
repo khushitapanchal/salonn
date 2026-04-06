@@ -8,7 +8,7 @@ import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 
 interface Service {
-  id: number; name: string; price: number; category?: string; duration?: number;
+  id: number; name: string; price: number; category?: string; sub_category?: string | null; duration?: number;
 }
 interface Customer {
   id: number; name: string; phone: string; email?: string;
@@ -92,11 +92,13 @@ export default function AppointmentsPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Group services by category
-  const groupedServices = services.reduce<Record<string, Service[]>>((acc, s) => {
+  // Group services by category → sub-category
+  const groupedServices = services.reduce<Record<string, Record<string, Service[]>>>((acc, s) => {
     const cat = s.category || 'Other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(s);
+    const sub = s.sub_category || '';
+    if (!acc[cat]) acc[cat] = {};
+    if (!acc[cat][sub]) acc[cat][sub] = [];
+    acc[cat][sub].push(s);
     return acc;
   }, {});
 
@@ -347,20 +349,33 @@ export default function AppointmentsPage() {
               {/* Services grouped by category */}
               <div>
                 <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Select Services</label>
-                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '0.375rem' }}>
-                  {Object.entries(groupedServices).sort(([a], [b]) => a.localeCompare(b)).map(([category, catServices]) => (
+                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                  {Object.entries(groupedServices).sort(([a], [b]) => a.localeCompare(b)).map(([category, subGroups]) => (
                     <div key={category}>
-                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-color)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0 }}>
+                      {/* Category header */}
+                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--primary-light)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 2 }}>
                         {category}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem', padding: '0.5rem 0.75rem' }}>
-                        {catServices.map(s => (
-                          <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem 0' }}>
-                            <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => handleServiceToggle(s.id)} />
-                            {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>₹{s.price}</span>
-                          </label>
-                        ))}
-                      </div>
+                      {Object.entries(subGroups).sort(([a], [b]) => a.localeCompare(b)).map(([subCat, subServices]) => (
+                        <div key={`${category}__${subCat}`}>
+                          {/* Sub-category header (only if it has a name) */}
+                          {subCat && (
+                            <div style={{ padding: '0.35rem 0.75rem 0.35rem 1.25rem', background: 'var(--bg-color)', fontWeight: 600, fontSize: '0.7rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ width: '2px', height: '0.75rem', background: 'var(--primary)', borderRadius: '1px' }} />
+                              {subCat}
+                            </div>
+                          )}
+                          {/* Services */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem', padding: '0.4rem 0.75rem' }}>
+                            {subServices.map(s => (
+                              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem 0' }}>
+                                <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => handleServiceToggle(s.id)} />
+                                {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>₹{s.price}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
