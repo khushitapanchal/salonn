@@ -214,7 +214,7 @@ export default function ServicesPage() {
   };
 
   // Render a service card
-  const renderServiceCard = (s: Service) => (
+  const renderServiceCard = (s: Service, hideCategory?: boolean) => (
     <div key={s.id} className={dashStyles.statCard} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '1.25rem 1.25rem 0.75rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
@@ -224,9 +224,11 @@ export default function ServicesPage() {
             </div>
             <div>
               <h3 style={{ fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {s.sub_category ? `${s.category} / ${s.sub_category}` : s.category}
-              </span>
+              {!hideCategory && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {s.category}
+                </span>
+              )}
             </div>
           </div>
           <h3 style={{ fontWeight: 700, color: 'var(--primary)' }}>₹{s.price}</h3>
@@ -400,7 +402,7 @@ export default function ServicesPage() {
 
                     {/* Sub-category services grid */}
                     <div className={styles.grid} style={{ padding: '0.75rem', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}>
-                      {subCatServices.map(s => renderServiceCard(s))}
+                      {subCatServices.map(s => renderServiceCard(s, true))}
                     </div>
                   </div>
                 );
