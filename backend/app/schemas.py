@@ -164,6 +164,10 @@ class AppointmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    def model_post_init(self, __context: Any) -> None:
+        """Ensure all fields are included in API response (not stripped by FastAPI)."""
+        self.model_fields_set.update(self.model_fields.keys())
+
 class Token(BaseModel):
     access_token: str
     token_type: str
