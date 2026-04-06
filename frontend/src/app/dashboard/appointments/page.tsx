@@ -77,6 +77,8 @@ export default function AppointmentsPage() {
     paid_amount: '',
   });
 
+  const [debugInfo, setDebugInfo] = useState<string>('');
+
   const fetchData = async () => {
     const [appRes, custRes, servRes, staffRes] = await Promise.allSettled([
       api.get('/appointments/'),
@@ -84,10 +86,27 @@ export default function AppointmentsPage() {
       api.get('/services/'),
       api.get('/appointments/staff'),
     ]);
-    if (appRes.status === 'fulfilled') setAppointments(appRes.value.data);
-    if (custRes.status === 'fulfilled') setCustomers(custRes.value.data);
-    if (servRes.status === 'fulfilled') setServices(servRes.value.data);
-    if (staffRes.status === 'fulfilled') setStaffMembers(staffRes.value.data);
+
+    // Collect debug info
+    const dbg: string[] = [];
+    if (appRes.status === 'fulfilled') { setAppointments(appRes.value.data); dbg.push(`Appointments: ${appRes.value.data.length}`); }
+    else { dbg.push(`Appointments ERROR: ${appRes.reason?.response?.status} - ${JSON.stringify(appRes.reason?.response?.data)}`); }
+    if (custRes.status === 'fulfilled') { setCustomers(custRes.value.data); dbg.push(`Customers: ${custRes.value.data.length}`); }
+    else { dbg.push(`Customers ERROR: ${custRes.reason?.response?.status} - ${JSON.stringify(custRes.reason?.response?.data)}`); }
+    if (servRes.status === 'fulfilled') { setServices(servRes.value.data); dbg.push(`Services: ${servRes.value.data.length}`); }
+    else { dbg.push(`Services ERROR: ${servRes.reason?.response?.status} - ${JSON.stringify(servRes.reason?.response?.data)}`); }
+    if (staffRes.status === 'fulfilled') { setStaffMembers(staffRes.value.data); dbg.push(`Staff: ${staffRes.value.data.length}`); }
+    else { dbg.push(`Staff ERROR: ${staffRes.reason?.response?.status} - ${JSON.stringify(staffRes.reason?.response?.data)}`); }
+    setDebugInfo(dbg.join(' | '));
+  };
+
+  const fetchDebug = async () => {
+    try {
+      const res = await api.get('/appointments/debug');
+      setDebugInfo(JSON.stringify(res.data, null, 2));
+    } catch (err: any) {
+      setDebugInfo(`Debug error: ${err?.response?.status} - ${JSON.stringify(err?.response?.data)}`);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -204,6 +223,19 @@ export default function AppointmentsPage() {
 
   return (
     <div>
+      {/* DEBUG PANEL - remove after fixing */}
+      <div style={{ background: '#1a1a2e', color: '#0f0', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <button onClick={fetchDebug} style={{ background: '#333', color: '#0f0', border: '1px solid #0f0', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
+            Run Debug
+          </button>
+          <button onClick={fetchData} style={{ background: '#333', color: '#ff0', border: '1px solid #ff0', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
+            Retry Fetch
+          </button>
+        </div>
+        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, maxHeight: '200px', overflow: 'auto' }}>{debugInfo || 'Loading...'}</pre>
+      </div>
+
       <div className={custStyles.headerRow}>
         <div>
           <h1 className={dashStyles.pageTitle}>Appointments</h1>
