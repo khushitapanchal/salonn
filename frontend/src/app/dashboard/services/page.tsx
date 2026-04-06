@@ -332,13 +332,6 @@ export default function ServicesPage() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <button
-                    onClick={() => handleAddSubCategory(category)}
-                    title="Add sub-category"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'none', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.25rem 0.6rem', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                  >
-                    <FolderPlus size={14} /> Sub-Category
-                  </button>
-                  <button
                     onClick={() => handleDeleteCategory(category)}
                     title="Delete entire category"
                     className={custStyles.actionBtn}
