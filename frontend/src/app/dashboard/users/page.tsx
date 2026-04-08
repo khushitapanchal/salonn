@@ -22,7 +22,7 @@ interface ServiceBreakdown {
 interface RecentAppt {
   id: number; customer_name: string; customer_phone: string; date: string;
   time: string; status: string; payment_status: string; total_amount: number;
-  paid_amount: number; services: string[];
+  paid_amount: number; services: string[]; package_name: string | null;
 }
 
 interface StaffPerformance {
@@ -250,7 +250,7 @@ export default function UsersPage() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={12} /> {a.date} at {a.time}</span>
-                              <span>{a.services.join(', ')}</span>
+                              <span>{a.package_name ? a.package_name : a.services.join(', ')}</span>
                             </div>
                             <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.875rem' }}>₹{a.total_amount}</span>
                           </div>

@@ -39,6 +39,7 @@ export default function ReportsPage() {
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
   const [serviceReport, setServiceReport] = useState<ServiceReport | null>(null);
   const [customerReport, setCustomerReport] = useState<CustomerReport | null>(null);
+  const [allServices, setAllServices] = useState<{id: number; name: string; is_length_based?: number; price_short?: number | null; price_extra_long?: number | null}[]>([]);
 
   // Filters
   const [dailyRange, setDailyRange] = useState(30);
@@ -78,7 +79,14 @@ export default function ReportsPage() {
     fetchMonthly(selectedYear);
     fetchServices();
     fetchCustomers();
+    api.get('/services/all').then(r => setAllServices(r.data)).catch(() => {});
   }, []);
+
+  const getServicePriceLabel = (s: ServiceData) => {
+    const full = allServices.find(sv => sv.id === s.id || sv.name === s.name);
+    if (full?.is_length_based) return `₹${full.price_short} – ₹${full.price_extra_long}`;
+    return `₹${s.price}`;
+  };
 
   useEffect(() => { fetchDaily(dailyRange); }, [dailyRange]);
   useEffect(() => { fetchMonthly(selectedYear); }, [selectedYear]);
@@ -313,10 +321,11 @@ export default function ReportsPage() {
                 </div>
                 <div className={styles.summaryCard}>
                   <span className={styles.summaryLabel}>Top Revenue Service</span>
-                  <span className={styles.summaryValue} style={{ fontSize: '1.1rem', color: 'var(--success)' }}>
-                    {[...serviceReport.data].sort((a, b) => b.revenue - a.revenue)[0].name}
-                  </span>
-                  <span className={styles.summarySubtext}>₹{[...serviceReport.data].sort((a, b) => b.revenue - a.revenue)[0].revenue.toLocaleString('en-IN')}</span>
+                  {(() => { const top = [...serviceReport.data].sort((a, b) => b.revenue - a.revenue)[0]; return (<>
+                    <span className={styles.summaryValue} style={{ fontSize: '1.1rem', color: 'var(--success)' }}>{top.name}</span>
+                    <span className={styles.summarySubtext}>₹{top.revenue.toLocaleString('en-IN')} revenue</span>
+                    <span className={styles.summarySubtext} style={{ fontSize: '0.7rem', color: 'var(--primary)' }}>Price: {getServicePriceLabel(top)}</span>
+                  </>); })()}
                 </div>
               </>
             )}
@@ -342,6 +351,7 @@ export default function ReportsPage() {
                         <div>
                           <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{s.name}</span>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', textTransform: 'uppercase' }}>{s.category}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--primary)', marginLeft: '0.5rem', fontWeight: 500 }}>{getServicePriceLabel(s)}</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{s.bookings} bookings</span>

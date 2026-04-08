@@ -18,6 +18,12 @@ interface Customer {
 
 interface Service {
   id: number; name: string; price: number; category?: string; duration?: number;
+  is_length_based?: number;
+  price_short?: number | null; price_extra_long?: number | null;
+}
+interface FullService {
+  id: number; name: string; price: number; is_length_based?: number;
+  price_short?: number | null; price_extra_long?: number | null;
 }
 interface StaffMember {
   id: number; name: string; email: string; role: string;
@@ -35,6 +41,7 @@ interface Appointment {
   assigned_staff: StaffMember | null;
   payment_status: string;
   payment_mode: string | null;
+  package_name: string | null;
   completed_at: string | null;
 }
 
@@ -66,14 +73,17 @@ export default function CustomersPage() {
   // Detail view
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerAppointments, setCustomerAppointments] = useState<Appointment[]>([]);
+  const [allServices, setAllServices] = useState<FullService[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   const fetchCustomers = async () => {
     const res = await api.get(`/customers/?search=${search}`);
-    setCustomers(res.data);
+    const sorted = [...res.data].sort((a: Customer, b: Customer) => a.name.localeCompare(b.name));
+    setCustomers(sorted);
   };
 
   useEffect(() => { fetchCustomers(); }, [search]);
+  useEffect(() => { api.get('/services/all').then(r => setAllServices(r.data)).catch(() => {}); }, []);
 
   const closeModal = () => {
     setShowModal(false);
@@ -269,7 +279,20 @@ export default function CustomersPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                          {a.services.map(s => (
+                          {a.package_name ? (
+                            <span style={{
+                              padding: '0.2rem 0.5rem',
+                              background: 'var(--primary-light)',
+                              color: 'var(--primary)',
+                              borderRadius: '999px',
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                            }}>
+                              {a.package_name}
+                            </span>
+                          ) : a.services.map(s => {
+                            const full = allServices.find(sv => sv.id === s.id);
+                            return (
                             <span key={s.id} style={{
                               padding: '0.2rem 0.5rem',
                               background: 'var(--primary-light)',
@@ -278,9 +301,9 @@ export default function CustomersPage() {
                               fontSize: '0.7rem',
                               fontWeight: 500,
                             }}>
-                              {s.name} – ₹{s.price}
+                              {s.name} – {full?.is_length_based ? `₹${full.price_short} – ₹${full.price_extra_long}` : `₹${s.price}`}
                             </span>
-                          ))}
+                          );})}
                         </div>
                       </td>
                       <td>

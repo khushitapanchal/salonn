@@ -134,6 +134,7 @@ def get_user_performance(user_id: int, db: Session = Depends(database.get_db), c
                 "total_amount": float(a.total_amount or 0),
                 "paid_amount": float(a.paid_amount or 0),
                 "services": [s.service_name or "Unknown" for s in a.services],
+                "package_name": a.package_name,
             })
 
         return {

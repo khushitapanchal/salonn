@@ -17,6 +17,17 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────
 interface Service {
   id: number; name: string; category: string; sub_category?: string | null; price: number; duration: number;
+  is_length_based?: number;
+  price_short?: number | null; price_medium?: number | null;
+  price_long?: number | null; price_extra_long?: number | null;
+}
+type HairLength = 'short' | 'medium' | 'long' | 'extra_long';
+interface PackageServiceItem {
+  id: number; name: string; category: string; price: number; duration: number;
+}
+interface PackageItem {
+  id: number; name: string; price: number; duration: number;
+  services: PackageServiceItem[];
 }
 interface Customer {
   id: number; name: string; phone: string; email?: string;
@@ -37,6 +48,7 @@ interface Appointment {
   assigned_staff: StaffMember | null;
   payment_status: string;
   payment_mode: string | null;
+  package_name: string | null;
   completed_at: string | null;
 }
 
@@ -69,6 +81,9 @@ export default function CalendarPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [selectedPackageIds, setSelectedPackageIds] = useState<Set<number>>(new Set());
+  const [selectedLengths, setSelectedLengths] = useState<Record<number, HairLength>>({});
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
 
   const [view, setView] = useState<ViewMode>('monthly');
@@ -97,16 +112,18 @@ export default function CalendarPage() {
 
   // ── Fetch ─────────────────────────────────────────────────────────
   const fetchData = async () => {
-    const [a, c, s, st] = await Promise.allSettled([
+    const [a, c, s, st, p] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
       api.get('/services/all'),
       api.get('/appointments/staff'),
+      api.get('/packages/'),
     ]);
     if (a.status === 'fulfilled') setAppointments(a.value.data);
     if (c.status === 'fulfilled') setCustomers(c.value.data);
     if (s.status === 'fulfilled') setServices(s.value.data);
     if (st.status === 'fulfilled') setStaffMembers(st.value.data);
+    if (p.status === 'fulfilled') setPackages(p.value.data);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -178,6 +195,8 @@ export default function CalendarPage() {
   const openBookingForDate = (date: Date, hour?: number) => {
     setEditingAppt(null);
     resetForm();
+    setSelectedPackageIds(new Set());
+    setSelectedLengths({});
     setFormData({
       customer_id: '',
       date: format(date, 'yyyy-MM-dd'),
@@ -196,6 +215,8 @@ export default function CalendarPage() {
     setDetailAppt(null);
     setEditingAppt(appt);
     resetForm();
+    setSelectedPackageIds(new Set());
+    setSelectedLengths({});
     setFormData({
       customer_id: String(appt.customer.id),
       date: appt.date,
@@ -210,6 +231,17 @@ export default function CalendarPage() {
     setShowBooking(true);
   };
 
+  const getServicePrice = (s: Service): number => {
+    if (s.is_length_based && selectedLengths[s.id]) {
+      const len = selectedLengths[s.id];
+      if (len === 'short') return s.price_short || s.price;
+      if (len === 'medium') return s.price_medium || s.price;
+      if (len === 'long') return s.price_long || s.price;
+      if (len === 'extra_long') return s.price_extra_long || s.price;
+    }
+    return s.price;
+  };
+
   const handleServiceToggle = (id: number) => {
     setFormData(prev => ({
       ...prev,
@@ -217,6 +249,53 @@ export default function CalendarPage() {
         ? prev.service_ids.filter(x => x !== id)
         : [...prev.service_ids, id],
     }));
+  };
+
+  const handlePackageToggle = (pkg: PackageItem) => {
+    const pkgServiceIds = pkg.services.map(s => s.id);
+    setSelectedPackageIds(prev => {
+      const n = new Set(prev);
+      if (n.has(pkg.id)) {
+        // Deselect package: remove its services
+        n.delete(pkg.id);
+        setFormData(prev => ({
+          ...prev,
+          service_ids: prev.service_ids.filter(id => !pkgServiceIds.includes(id)),
+        }));
+      } else {
+        // Select package: add its services
+        n.add(pkg.id);
+        setFormData(prev => ({
+          ...prev,
+          service_ids: [...new Set([...prev.service_ids, ...pkgServiceIds])],
+        }));
+      }
+      return n;
+    });
+  };
+
+  // Calculate total: use package price for packaged services, individual price for the rest
+  const calcTotal = () => {
+    let total = 0;
+    const coveredByPackage = new Set<number>();
+    for (const pkgId of selectedPackageIds) {
+      const pkg = packages.find(p => p.id === pkgId);
+      if (pkg) {
+        const pkgServiceIds = pkg.services.map(s => s.id);
+        const allIncluded = pkgServiceIds.every(id => formData.service_ids.includes(id));
+        if (allIncluded) {
+          total += pkg.price;
+          pkgServiceIds.forEach(id => coveredByPackage.add(id));
+        }
+      }
+    }
+    for (const sid of formData.service_ids) {
+      if (!coveredByPackage.has(sid)) {
+        const svc = services.find(s => s.id === sid);
+        if (svc) total += getServicePrice(svc);
+      }
+    }
+    return total;
   };
 
   const handleAddNewCustomer = async () => {
@@ -235,16 +314,27 @@ export default function CalendarPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const hasLengthBased = formData.service_ids.some(id => { const s = services.find(sv => sv.id === id); return s?.is_length_based; });
+      const totalOverride = (selectedPackageIds.size > 0 || hasLengthBased) ? calcTotal() : null;
+      // Build per-service price map for length-based services
+      const servicePrices: Record<string, number> = {};
+      formData.service_ids.forEach(id => {
+        const s = services.find(sv => sv.id === id);
+        if (s) servicePrices[String(id)] = getServicePrice(s);
+      });
       const payload = {
         customer_id: parseInt(formData.customer_id),
         date: formData.date,
         time: formData.time,
         service_ids: formData.service_ids,
+        service_prices: servicePrices,
         assigned_staff_id: formData.assigned_staff_id ? parseInt(formData.assigned_staff_id) : null,
         status: formData.status,
         payment_status: formData.payment_status,
         payment_mode: formData.payment_mode || null,
         paid_amount: formData.payment_status === 'partial' ? parseFloat(formData.paid_amount) || 0 : 0,
+        total_amount_override: totalOverride,
+        package_name: selectedPackageIds.size > 0 ? packages.filter(p => selectedPackageIds.has(p.id)).map(p => p.name).join(', ') : null,
       };
       if (editingAppt) {
         await api.put(`/appointments/${editingAppt.id}`, payload);
@@ -438,6 +528,7 @@ export default function CalendarPage() {
                   {format(parseISO(a.date), 'MMM d, yyyy')} at {a.time.slice(0, 5)}
                 </div>
                 <div className={styles.upcomingItemServices}>
+                  {a.package_name && <span style={{ background: 'var(--primary)', color: 'white', padding: '0.1rem 0.4rem', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 600, marginRight: '0.3rem' }}>{a.package_name}</span>}
                   {a.services.map(s => s.name).join(', ')}
                 </div>
                 {a.assigned_staff && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>Staff: {a.assigned_staff.name}</div>}
@@ -487,6 +578,11 @@ export default function CalendarPage() {
                 <span className={styles.detailLabel}>Payment</span>
                 <span className={styles.detailValue} style={{ color: getPaymentColor(detailAppt.payment_status || 'unpaid'), fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem' }}>
                   {detailAppt.payment_status || 'unpaid'}
+                  {detailAppt.payment_status === 'paid' && detailAppt.payment_mode && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                      ({detailAppt.payment_mode})
+                    </span>
+                  )}
                   {detailAppt.payment_status === 'partial' && detailAppt.paid_amount > 0 && (
                     <span style={{ fontSize: '0.75rem', fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                       (Paid ₹{detailAppt.paid_amount} / ₹{detailAppt.total_amount})
@@ -498,10 +594,22 @@ export default function CalendarPage() {
 
             <div style={{ marginTop: '1rem' }}>
               <span className={styles.detailLabel}>Services</span>
+              {detailAppt.package_name && (
+                <div style={{ marginTop: '0.4rem', marginBottom: '0.4rem' }}>
+                  <span style={{ display: 'inline-block', background: 'var(--primary)', color: 'white', padding: '0.2rem 0.65rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>
+                    {detailAppt.package_name}
+                  </span>
+                </div>
+              )}
               <div className={styles.servicesList}>
-                {detailAppt.services.map(s => (
-                  <span key={s.id} className={styles.serviceTag}>{s.name} – ₹{s.price}</span>
-                ))}
+                {detailAppt.services.map(s => {
+                  const full = services.find(sv => sv.id === s.id);
+                  return (
+                    <span key={s.id} className={styles.serviceTag}>
+                      {s.name} – {full?.is_length_based ? `₹${full.price_short} – ₹${full.price_extra_long}` : `₹${s.price}`}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -549,7 +657,7 @@ export default function CalendarPage() {
                   <div style={{ border: '1px solid var(--border)', padding: '0.75rem', borderRadius: '0.375rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const }}>
                       <input className="input-field" placeholder="Customer name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} style={{ flex: 1 }} />
-                      <input className="input-field" placeholder="Phone number" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} style={{ flex: 1 }} />
+                      <input className="input-field" placeholder="Phone number" required type="tel" maxLength={10} pattern="\d{10}" value={newCustomer.phone} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setNewCustomer({ ...newCustomer, phone: v }); }} style={{ flex: 1 }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                       <button type="button" onClick={() => { setShowNewCustomer(false); setNewCustomer({ name: '', phone: '' }); }} className="btn-primary" style={{ background: 'var(--text-muted)', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>Cancel</button>
@@ -575,6 +683,25 @@ export default function CalendarPage() {
               <div>
                 <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Select Services</label>
                 <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                  {/* ── Packages ── */}
+                  {packages.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--primary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'white', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        Packages
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.25rem', padding: '0.4rem 0.75rem' }}>
+                        {packages.map(pkg => (
+                          <label key={`pkg-${pkg.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.3rem 0' }}>
+                            <input type="checkbox" checked={selectedPackageIds.has(pkg.id)} onChange={() => handlePackageToggle(pkg)} />
+                            <span style={{ fontWeight: 600 }}>{pkg.name}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>({pkg.services.length} services)</span>
+                            <span style={{ color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, marginLeft: 'auto' }}>₹{pkg.price}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* ── Individual Services ── */}
                   {Object.entries(groupedServices).sort(([a], [b]) => a.localeCompare(b)).map(([category, subGroups]) => (
                     <div key={category}>
                       <div style={{ padding: '0.5rem 0.75rem', background: 'var(--primary-light)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 2 }}>
@@ -590,10 +717,35 @@ export default function CalendarPage() {
                           )}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem', padding: '0.4rem 0.75rem' }}>
                             {subServices.map(s => (
-                              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem 0' }}>
-                                <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => handleServiceToggle(s.id)} />
-                                {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>₹{s.price}</span>
-                              </label>
+                              <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.2rem 0' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => {
+                                    handleServiceToggle(s.id);
+                                    if (s.is_length_based && !formData.service_ids.includes(s.id)) {
+                                      setSelectedLengths(prev => ({ ...prev, [s.id]: 'short' }));
+                                    }
+                                  }} />
+                                  {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                    {s.is_length_based ? `₹${s.price_short} – ₹${s.price_extra_long}` : `₹${s.price}`}
+                                  </span>
+                                </label>
+                                {!!s.is_length_based && formData.service_ids.includes(s.id) && (
+                                  <div style={{ display: 'flex', gap: '0.25rem', marginLeft: '1.5rem', flexWrap: 'wrap' }}>
+                                    {([['short', 'Short', s.price_short], ['medium', 'Medium', s.price_medium], ['long', 'Long', s.price_long], ['extra_long', 'Extra Long', s.price_extra_long]] as [HairLength, string, number | null | undefined][]).map(([key, label, price]) => (
+                                      <button type="button" key={key} onClick={() => setSelectedLengths(prev => ({ ...prev, [s.id]: key }))}
+                                        style={{
+                                          padding: '0.15rem 0.4rem', borderRadius: '999px', fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
+                                          border: '1.5px solid', transition: 'all 0.15s',
+                                          borderColor: selectedLengths[s.id] === key ? 'var(--primary)' : 'var(--border)',
+                                          background: selectedLengths[s.id] === key ? 'var(--primary)' : 'transparent',
+                                          color: selectedLengths[s.id] === key ? 'white' : 'var(--text-muted)',
+                                        }}>
+                                        {label} ₹{price}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -646,7 +798,7 @@ export default function CalendarPage() {
 
               {/* Paid Amount (shown only for partial) */}
               {formData.payment_status === 'partial' && (() => {
-                const totalAmount = services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
+                const totalAmount = calcTotal();
                 const paidAmount = parseFloat(formData.paid_amount) || 0;
                 const balance = totalAmount - paidAmount;
                 return (

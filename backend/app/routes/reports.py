@@ -136,42 +136,72 @@ def popular_services_report(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(require_admin),
 ):
+    # Get per-appointment service details with the appointment total
     rows = (
         db.query(
-            models.Service.id,
+            models.AppointmentService.appointment_id,
+            models.AppointmentService.service_id,
+            models.AppointmentService.price_at_booking,
+            models.Appointment.total_amount,
+            models.Service.id.label("sid"),
             models.Service.name,
             models.Service.category,
             models.Service.price,
-            func.count(models.AppointmentService.appointment_id).label("bookings"),
-            func.sum(models.AppointmentService.price_at_booking).label("revenue"),
-        )
-        .join(
-            models.AppointmentService,
-            models.Service.id == models.AppointmentService.service_id,
         )
         .join(
             models.Appointment,
             models.Appointment.id == models.AppointmentService.appointment_id,
         )
+        .join(
+            models.Service,
+            models.Service.id == models.AppointmentService.service_id,
+        )
         .filter(*_revenue_filter())
-        .group_by(models.Service.id)
-        .order_by(func.count(models.AppointmentService.appointment_id).desc())
         .all()
     )
 
-    total_bookings = sum(r.bookings for r in rows) or 1
-    data = []
+    # For each appointment, compute each service's proportional share of total_amount
+    # Group by appointment first to get per-appointment totals
+    from collections import defaultdict
+    appt_services = defaultdict(list)  # appointment_id -> list of (service_id, price_at_booking)
+    appt_total = {}  # appointment_id -> total_amount
+    service_info = {}  # service_id -> (name, category, price)
+
     for r in rows:
+        appt_services[r.appointment_id].append((r.service_id, float(r.price_at_booking or 0)))
+        appt_total[r.appointment_id] = float(r.total_amount or 0)
+        service_info[r.service_id] = (r.name, r.category, float(r.price))
+
+    # Calculate proportional revenue per service
+    service_revenue = defaultdict(float)
+    service_bookings = defaultdict(int)
+
+    for appt_id, svc_list in appt_services.items():
+        total = appt_total[appt_id]
+        sum_prices = sum(p for _, p in svc_list)
+        for svc_id, price in svc_list:
+            service_bookings[svc_id] += 1
+            if sum_prices > 0:
+                service_revenue[svc_id] += (price / sum_prices) * total
+            else:
+                service_revenue[svc_id] += total / len(svc_list)
+
+    total_bookings = sum(service_bookings.values()) or 1
+    data = []
+    for svc_id, (name, category, price) in service_info.items():
+        bookings = service_bookings[svc_id]
+        revenue = service_revenue[svc_id]
         data.append({
-            "id": r.id,
-            "name": r.name,
-            "category": r.category,
-            "price": float(r.price),
-            "bookings": r.bookings,
-            "revenue": float(r.revenue or 0),
-            "percentage": round((r.bookings / total_bookings) * 100, 1),
+            "id": svc_id,
+            "name": name,
+            "category": category,
+            "price": price,
+            "bookings": bookings,
+            "revenue": round(revenue, 2),
+            "percentage": round((bookings / total_bookings) * 100, 1),
         })
 
+    data.sort(key=lambda x: x["bookings"], reverse=True)
     return {"data": data, "total_bookings": total_bookings}
 
 

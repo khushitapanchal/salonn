@@ -111,12 +111,28 @@ try:
             if 'payment_mode' not in columns:
                 conn.execute(text('ALTER TABLE appointments ADD COLUMN payment_mode VARCHAR'))
 
+            # Appointments: add package_name column
+            if 'package_name' not in columns:
+                conn.execute(text('ALTER TABLE appointments ADD COLUMN package_name VARCHAR'))
+
             # Services: add parent_id and sub_category columns
             service_columns = [col['name'] for col in inspector.get_columns('services')]
             if 'parent_id' not in service_columns:
                 conn.execute(text('ALTER TABLE services ADD COLUMN parent_id INTEGER REFERENCES services(id)'))
             if 'sub_category' not in service_columns:
                 conn.execute(text('ALTER TABLE services ADD COLUMN sub_category VARCHAR'))
+
+            # Services: add length-based pricing columns
+            if 'is_length_based' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN is_length_based INTEGER DEFAULT 0'))
+            if 'price_short' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN price_short NUMERIC(10,2)'))
+            if 'price_medium' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN price_medium NUMERIC(10,2)'))
+            if 'price_long' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN price_long NUMERIC(10,2)'))
+            if 'price_extra_long' not in service_columns:
+                conn.execute(text('ALTER TABLE services ADD COLUMN price_extra_long NUMERIC(10,2)'))
 
             conn.commit()
         logger.info("Migrations completed successfully")
@@ -127,7 +143,7 @@ except Exception as e:
     logger.error(f"Database setup error: {e}")
 
 # ── Routes ──────────────────────────────────────��────────────────
-from .routes import auth, customers, services, appointments, dashboard, reports, users
+from .routes import auth, customers, services, appointments, dashboard, reports, users, packages
 
 app.include_router(auth.router)
 app.include_router(customers.router)
@@ -136,6 +152,7 @@ app.include_router(appointments.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(users.router)
+app.include_router(packages.router)
 
 @app.get("/")
 def read_root():

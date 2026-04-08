@@ -41,9 +41,32 @@ class Service(Base):
     sub_category = Column(String, nullable=True)
     price = Column(Numeric(10, 2))
     duration = Column(Integer) # in minutes
+    is_length_based = Column(Integer, default=0) # 0=fixed, 1=length-based
+    price_short = Column(Numeric(10, 2), nullable=True)
+    price_medium = Column(Numeric(10, 2), nullable=True)
+    price_long = Column(Numeric(10, 2), nullable=True)
+    price_extra_long = Column(Numeric(10, 2), nullable=True)
     parent_id = Column(Integer, ForeignKey("services.id"), nullable=True)
 
     parent = relationship("Service", remote_side="Service.id", backref="sub_services")
+
+class Package(Base):
+    __tablename__ = "packages"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    price = Column(Numeric(10, 2))
+    duration = Column(Integer)  # total duration in minutes
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    services = relationship("PackageService", cascade="all, delete-orphan")
+
+class PackageService(Base):
+    __tablename__ = "package_services"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    package_id = Column(Integer, ForeignKey("packages.id"), nullable=False)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+
+    service = relationship("Service")
 
 class Appointment(Base):
     __tablename__ = "appointments"
@@ -55,6 +78,7 @@ class Appointment(Base):
     status = Column(String, default="booked") # "booked", "pending", "completed", "cancelled"
     payment_status = Column(String, default="unpaid") # "unpaid", "paid", "partial"
     payment_mode = Column(String, nullable=True) # "cash", "online", None
+    package_name = Column(String, nullable=True)
     paid_amount = Column(Numeric(10, 2), default=0.00)
     total_amount = Column(Numeric(10, 2), default=0.00)
     completed_at = Column(DateTime, nullable=True)

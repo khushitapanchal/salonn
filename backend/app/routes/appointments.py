@@ -73,7 +73,10 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
     if len(services) != len(appointment.service_ids):
         raise HTTPException(status_code=400, detail="One or more services not found")
 
-    total_amount = float(sum([float(service.price) for service in services]))
+    if appointment.total_amount_override is not None and appointment.total_amount_override > 0:
+        total_amount = float(appointment.total_amount_override)
+    else:
+        total_amount = float(sum([float(service.price) for service in services]))
 
     # For "paid" status, paid_amount = total; for "unpaid", paid_amount = 0
     if appointment.payment_status == "paid":
@@ -91,15 +94,18 @@ def create_appointment(appointment: schemas.AppointmentCreate, db: Session = Dep
         status=appointment.status,
         payment_status=appointment.payment_status,
         payment_mode=appointment.payment_mode,
+        package_name=appointment.package_name,
         paid_amount=paid_amount,
         total_amount=total_amount,
         completed_at=datetime.utcnow() if appointment.status == "completed" else None,
     )
+    sp = appointment.service_prices or {}
     for service in services:
+        price = sp.get(str(service.id), sp.get(service.id, float(service.price)))
         new_app.services.append(models.AppointmentService(
             service_id=service.id,
             service_name=service.name,
-            price_at_booking=float(service.price),
+            price_at_booking=float(price),
         ))
 
     db.add(new_app)
@@ -120,12 +126,21 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     # Build a map of existing snapshot prices to preserve them
     existing_snapshots = {s.service_id: s for s in app.services}
 
-    # For each service: keep original snapshot if it existed, else use current price
+    # For each service: use override price if provided, else keep snapshot or current price
+    sp = appointment.service_prices or {}
     new_service_items = []
     total_amount = 0
     for service in services:
-        if service.id in existing_snapshots:
-            # Preserve original price snapshot
+        override_price = sp.get(str(service.id), sp.get(service.id))
+        if override_price is not None:
+            price = float(override_price)
+            new_service_items.append(models.AppointmentService(
+                service_id=service.id,
+                service_name=service.name,
+                price_at_booking=price,
+            ))
+            total_amount += price
+        elif service.id in existing_snapshots:
             old = existing_snapshots[service.id]
             new_service_items.append(models.AppointmentService(
                 service_id=service.id,
@@ -134,13 +149,16 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
             ))
             total_amount += old.price_at_booking
         else:
-            # New service added — snapshot current price
             new_service_items.append(models.AppointmentService(
                 service_id=service.id,
                 service_name=service.name,
                 price_at_booking=service.price,
             ))
             total_amount += service.price
+
+    # Use package price override if provided
+    if appointment.total_amount_override is not None and appointment.total_amount_override > 0:
+        total_amount = float(appointment.total_amount_override)
 
     # Auto-set completed_at when status changes to completed
     if appointment.status == "completed" and app.status != "completed":
@@ -163,6 +181,7 @@ def update_appointment(appointment_id: int, appointment: schemas.AppointmentCrea
     app.status = appointment.status
     app.payment_status = appointment.payment_status
     app.payment_mode = appointment.payment_mode
+    app.package_name = appointment.package_name
     app.paid_amount = paid_amount
     app.total_amount = total_amount
 

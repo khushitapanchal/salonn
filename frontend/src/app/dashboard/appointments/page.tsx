@@ -9,6 +9,17 @@ import { useAuth } from '@/context/AuthContext';
 
 interface Service {
   id: number; name: string; price: number; category?: string; sub_category?: string | null; duration?: number;
+  is_length_based?: number;
+  price_short?: number | null; price_medium?: number | null;
+  price_long?: number | null; price_extra_long?: number | null;
+}
+type HairLength = 'short' | 'medium' | 'long' | 'extra_long';
+interface PackageServiceItem {
+  id: number; name: string; category: string; price: number; duration: number;
+}
+interface PackageItem {
+  id: number; name: string; price: number; duration: number;
+  services: PackageServiceItem[];
 }
 interface Customer {
   id: number; name: string; phone: string; email?: string;
@@ -29,6 +40,7 @@ interface Appointment {
   assigned_staff: StaffMember | null;
   payment_status: string;
   payment_mode: string | null;
+  package_name: string | null;
   completed_at: string | null;
 }
 
@@ -61,6 +73,9 @@ export default function AppointmentsPage() {
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [selectedPackageIds, setSelectedPackageIds] = useState<Set<number>>(new Set());
+  const [selectedLengths, setSelectedLengths] = useState<Record<number, HairLength>>({});
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
 
   // Add new customer inline
@@ -80,16 +95,18 @@ export default function AppointmentsPage() {
   });
 
   const fetchData = async () => {
-    const [appRes, custRes, servRes, staffRes] = await Promise.allSettled([
+    const [appRes, custRes, servRes, staffRes, pkgRes] = await Promise.allSettled([
       api.get('/appointments/'),
       api.get('/customers/'),
       api.get('/services/all'),
       api.get('/appointments/staff'),
+      api.get('/packages/'),
     ]);
     if (appRes.status === 'fulfilled') setAppointments(appRes.value.data);
     if (custRes.status === 'fulfilled') setCustomers(custRes.value.data);
     if (servRes.status === 'fulfilled') setServices(servRes.value.data);
     if (staffRes.status === 'fulfilled') setStaffMembers(staffRes.value.data);
+    if (pkgRes.status === 'fulfilled') setPackages(pkgRes.value.data);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -108,6 +125,8 @@ export default function AppointmentsPage() {
     setEditingAppt(null);
     setShowNewCustomer(false);
     setNewCustomer({ name: '', phone: '' });
+    setSelectedPackageIds(new Set());
+    setSelectedLengths({});
     setFormData({
       customer_id: '',
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -126,6 +145,8 @@ export default function AppointmentsPage() {
     setEditingAppt(appt);
     setShowNewCustomer(false);
     setNewCustomer({ name: '', phone: '' });
+    setSelectedPackageIds(new Set());
+    setSelectedLengths({});
     setFormData({
       customer_id: String(appt.customer.id),
       date: appt.date,
@@ -140,6 +161,17 @@ export default function AppointmentsPage() {
     setShowModal(true);
   };
 
+  const getServicePrice = (s: Service): number => {
+    if (s.is_length_based && selectedLengths[s.id]) {
+      const len = selectedLengths[s.id];
+      if (len === 'short') return s.price_short || s.price;
+      if (len === 'medium') return s.price_medium || s.price;
+      if (len === 'long') return s.price_long || s.price;
+      if (len === 'extra_long') return s.price_extra_long || s.price;
+    }
+    return s.price;
+  };
+
   const handleServiceToggle = (id: number) => {
     setFormData(prev => ({
       ...prev,
@@ -147,6 +179,52 @@ export default function AppointmentsPage() {
         ? prev.service_ids.filter(sId => sId !== id)
         : [...prev.service_ids, id]
     }));
+  };
+
+  const handlePackageToggle = (pkg: PackageItem) => {
+    const pkgServiceIds = pkg.services.map(s => s.id);
+    setSelectedPackageIds(prev => {
+      const n = new Set(prev);
+      if (n.has(pkg.id)) {
+        n.delete(pkg.id);
+        setFormData(prev => ({
+          ...prev,
+          service_ids: prev.service_ids.filter(id => !pkgServiceIds.includes(id)),
+        }));
+      } else {
+        n.add(pkg.id);
+        setFormData(prev => ({
+          ...prev,
+          service_ids: [...new Set([...prev.service_ids, ...pkgServiceIds])],
+        }));
+      }
+      return n;
+    });
+  };
+
+  // Calculate total: use package price for packaged services, individual price for the rest
+  const calcTotal = () => {
+    let total = 0;
+    const coveredByPackage = new Set<number>();
+    for (const pkgId of selectedPackageIds) {
+      const pkg = packages.find(p => p.id === pkgId);
+      if (pkg) {
+        const pkgServiceIds = pkg.services.map(s => s.id);
+        const allIncluded = pkgServiceIds.every(id => formData.service_ids.includes(id));
+        if (allIncluded) {
+          total += pkg.price;
+          pkgServiceIds.forEach(id => coveredByPackage.add(id));
+        }
+      }
+    }
+    // Add individual service prices for services not covered by any package
+    for (const sid of formData.service_ids) {
+      if (!coveredByPackage.has(sid)) {
+        const svc = services.find(s => s.id === sid);
+        if (svc) total += getServicePrice(svc);
+      }
+    }
+    return total;
   };
 
   const handleAddNewCustomer = async () => {
@@ -165,16 +243,27 @@ export default function AppointmentsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const hasLengthBased = formData.service_ids.some(id => { const s = services.find(sv => sv.id === id); return s?.is_length_based; });
+      const totalOverride = (selectedPackageIds.size > 0 || hasLengthBased) ? calcTotal() : null;
+      // Build per-service price map for length-based services
+      const servicePrices: Record<string, number> = {};
+      formData.service_ids.forEach(id => {
+        const s = services.find(sv => sv.id === id);
+        if (s) servicePrices[String(id)] = getServicePrice(s);
+      });
       const payload = {
         customer_id: parseInt(formData.customer_id),
         date: formData.date,
         time: formData.time,
         service_ids: formData.service_ids,
+        service_prices: servicePrices,
         assigned_staff_id: formData.assigned_staff_id ? parseInt(formData.assigned_staff_id) : null,
         status: formData.status,
         payment_status: formData.payment_status,
         payment_mode: formData.payment_mode || null,
         paid_amount: formData.payment_status === 'partial' ? parseFloat(formData.paid_amount) || 0 : 0,
+        total_amount_override: totalOverride,
+        package_name: selectedPackageIds.size > 0 ? packages.filter(p => selectedPackageIds.has(p.id)).map(p => p.name).join(', ') : null,
       };
       if (editingAppt) {
         await api.put(`/appointments/${editingAppt.id}`, payload);
@@ -250,7 +339,10 @@ export default function AppointmentsPage() {
                   </td>
                   <td style={{ fontWeight: 500 }}>{a.customer.name}</td>
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', whiteSpace: 'normal' }}>
-                    {a.services.map(s => s.name).join(', ')}
+                    {a.package_name ? a.package_name : a.services.map(s => {
+                      const full = services.find(sv => sv.id === s.id);
+                      return full?.is_length_based ? `${s.name} (₹${full.price_short}–₹${full.price_extra_long})` : s.name;
+                    }).join(', ')}
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>{getStaffName(a)}</td>
                   <td>
@@ -339,7 +431,7 @@ export default function AppointmentsPage() {
                   <div style={{ border: '1px solid var(--border)', padding: '0.75rem', borderRadius: '0.375rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const }}>
                       <input className="input-field" placeholder="Customer name" required value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} style={{ flex: 1 }} />
-                      <input className="input-field" placeholder="Phone number" required value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} style={{ flex: 1 }} />
+                      <input className="input-field" placeholder="Phone number" required type="tel" maxLength={10} pattern="\d{10}" value={newCustomer.phone} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setNewCustomer({ ...newCustomer, phone: v }); }} style={{ flex: 1 }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                       <button type="button" onClick={() => { setShowNewCustomer(false); setNewCustomer({ name: '', phone: '' }); }} className="btn-primary" style={{ background: 'var(--text-muted)', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>Cancel</button>
@@ -365,6 +457,25 @@ export default function AppointmentsPage() {
               <div>
                 <label className="label" style={{ marginBottom: '0.5rem', display: 'block' }}>Select Services</label>
                 <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                  {/* ── Packages ── */}
+                  {packages.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--primary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'white', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        Packages
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.25rem', padding: '0.4rem 0.75rem' }}>
+                        {packages.map(pkg => (
+                          <label key={`pkg-${pkg.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.3rem 0' }}>
+                            <input type="checkbox" checked={selectedPackageIds.has(pkg.id)} onChange={() => handlePackageToggle(pkg)} />
+                            <span style={{ fontWeight: 600 }}>{pkg.name}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>({pkg.services.length} services)</span>
+                            <span style={{ color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, marginLeft: 'auto' }}>₹{pkg.price}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* ── Individual Services ── */}
                   {Object.entries(groupedServices).sort(([a], [b]) => a.localeCompare(b)).map(([category, subGroups]) => (
                     <div key={category}>
                       {/* Category header */}
@@ -383,10 +494,35 @@ export default function AppointmentsPage() {
                           {/* Services */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem', padding: '0.4rem 0.75rem' }}>
                             {subServices.map(s => (
-                              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem 0' }}>
-                                <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => handleServiceToggle(s.id)} />
-                                {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>₹{s.price}</span>
-                              </label>
+                              <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.2rem 0' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={formData.service_ids.includes(s.id)} onChange={() => {
+                                    handleServiceToggle(s.id);
+                                    if (s.is_length_based && !formData.service_ids.includes(s.id)) {
+                                      setSelectedLengths(prev => ({ ...prev, [s.id]: 'short' }));
+                                    }
+                                  }} />
+                                  {s.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                    {s.is_length_based ? `₹${s.price_short} – ₹${s.price_extra_long}` : `₹${s.price}`}
+                                  </span>
+                                </label>
+                                {!!s.is_length_based && formData.service_ids.includes(s.id) && (
+                                  <div style={{ display: 'flex', gap: '0.25rem', marginLeft: '1.5rem', flexWrap: 'wrap' }}>
+                                    {([['short', 'Short', s.price_short], ['medium', 'Medium', s.price_medium], ['long', 'Long', s.price_long], ['extra_long', 'Extra Long', s.price_extra_long]] as [HairLength, string, number | null | undefined][]).map(([key, label, price]) => (
+                                      <button type="button" key={key} onClick={() => setSelectedLengths(prev => ({ ...prev, [s.id]: key }))}
+                                        style={{
+                                          padding: '0.15rem 0.4rem', borderRadius: '999px', fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
+                                          border: '1.5px solid', transition: 'all 0.15s',
+                                          borderColor: selectedLengths[s.id] === key ? 'var(--primary)' : 'var(--border)',
+                                          background: selectedLengths[s.id] === key ? 'var(--primary)' : 'transparent',
+                                          color: selectedLengths[s.id] === key ? 'white' : 'var(--text-muted)',
+                                        }}>
+                                        {label} ₹{price}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -439,7 +575,7 @@ export default function AppointmentsPage() {
 
               {/* Paid Amount (shown only for partial) */}
               {formData.payment_status === 'partial' && (() => {
-                const totalAmount = services.filter(s => formData.service_ids.includes(s.id)).reduce((sum, s) => sum + s.price, 0);
+                const totalAmount = calcTotal();
                 const paidAmount = parseFloat(formData.paid_amount) || 0;
                 const balance = totalAmount - paidAmount;
                 return (

@@ -48,6 +48,11 @@ class ServiceBase(BaseModel):
     sub_category: Optional[str] = None
     price: float
     duration: int
+    is_length_based: int = 0
+    price_short: Optional[float] = None
+    price_medium: Optional[float] = None
+    price_long: Optional[float] = None
+    price_extra_long: Optional[float] = None
     parent_id: Optional[int] = None
 
     @model_validator(mode='before')
@@ -55,6 +60,9 @@ class ServiceBase(BaseModel):
     def convert_decimal(cls, data: Any) -> Any:
         if hasattr(data, 'price') and data.price is not None:
             data.price = float(data.price)
+        for f in ('price_short', 'price_medium', 'price_long', 'price_extra_long'):
+            if hasattr(data, f) and getattr(data, f) is not None:
+                setattr(data, f, float(getattr(data, f)))
         return data
 
 class ServiceCreate(ServiceBase):
@@ -67,6 +75,11 @@ class SubServiceResponse(BaseModel):
     sub_category: Optional[str] = None
     price: float
     duration: int
+    is_length_based: int = 0
+    price_short: Optional[float] = None
+    price_medium: Optional[float] = None
+    price_long: Optional[float] = None
+    price_extra_long: Optional[float] = None
     parent_id: Optional[int] = None
 
     @model_validator(mode='before')
@@ -74,6 +87,9 @@ class SubServiceResponse(BaseModel):
     def convert_decimal(cls, data: Any) -> Any:
         if hasattr(data, 'price') and data.price is not None:
             data.price = float(data.price)
+        for f in ('price_short', 'price_medium', 'price_long', 'price_extra_long'):
+            if hasattr(data, f) and getattr(data, f) is not None:
+                setattr(data, f, float(getattr(data, f)))
         return data
 
     class Config:
@@ -93,6 +109,47 @@ class ServiceResponse(ServiceBase):
         """Ensure all fields are marked as set so FastAPI includes them in response."""
         self.model_fields_set.update(self.model_fields.keys())
 
+class PackageServiceResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    sub_category: Optional[str] = None
+    price: float
+    duration: int
+
+    class Config:
+        from_attributes = True
+
+class PackageBase(BaseModel):
+    name: str
+    price: float
+    duration: int
+    service_ids: List[int]
+
+class PackageCreate(PackageBase):
+    pass
+
+class PackageResponse(BaseModel):
+    id: int
+    name: str
+    price: float
+    duration: int
+    created_at: Optional[datetime] = None
+    services: List[PackageServiceResponse] = []
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_fields(cls, data: Any) -> Any:
+        if hasattr(data, 'price') and data.price is not None:
+            data.price = float(data.price)
+        return data
+
+    class Config:
+        from_attributes = True
+
+    def model_post_init(self, __context: Any) -> None:
+        self.model_fields_set.update(self.model_fields.keys())
+
 class AppointmentBase(BaseModel):
     customer_id: int
     date: date
@@ -103,6 +160,9 @@ class AppointmentBase(BaseModel):
     paid_amount: Optional[float] = 0.0
     assigned_staff_id: Optional[int] = None
     service_ids: List[int]
+    service_prices: Optional[dict] = None  # {service_id: price} for length-based overrides
+    total_amount_override: Optional[float] = None
+    package_name: Optional[str] = None
 
 class AppointmentCreate(AppointmentBase):
     pass
@@ -134,6 +194,7 @@ class AppointmentResponse(BaseModel):
     status: str
     payment_status: str = "unpaid"
     payment_mode: Optional[str] = None
+    package_name: Optional[str] = None
     paid_amount: float = 0.0
     total_amount: float = 0.0
     completed_at: Optional[datetime] = None
