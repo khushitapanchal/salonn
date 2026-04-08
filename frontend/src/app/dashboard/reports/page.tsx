@@ -64,20 +64,9 @@ export default function ReportsPage() {
     setMonthlyReport(res.data);
   };
 
-  const fetchServices = async () => {
-    const res = await api.get('/reports/popular-services');
-    setServiceReport(res.data);
-  };
-
-  const fetchCustomers = async () => {
-    const res = await api.get('/reports/frequent-customers');
-    setCustomerReport(res.data);
-  };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchServices();
-    fetchCustomers();
+    api.get('/reports/popular-services').then(r => setServiceReport(r.data)).catch(() => {});
+    api.get('/reports/frequent-customers').then(r => setCustomerReport(r.data)).catch(() => {});
     api.get('/services/all').then(r => setAllServices(r.data)).catch(() => {});
   }, []);
 

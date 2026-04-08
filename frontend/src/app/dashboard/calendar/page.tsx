@@ -267,7 +267,7 @@ export default function CalendarPage() {
         n.add(pkg.id);
         setFormData(prev => ({
           ...prev,
-          service_ids: [...new Set([...prev.service_ids, ...pkgServiceIds])],
+          service_ids: Array.from(new Set([...prev.service_ids, ...pkgServiceIds])),
         }));
       }
       return n;
@@ -278,7 +278,7 @@ export default function CalendarPage() {
   const calcTotal = () => {
     let total = 0;
     const coveredByPackage = new Set<number>();
-    for (const pkgId of selectedPackageIds) {
+    for (const pkgId of Array.from(selectedPackageIds)) {
       const pkg = packages.find(p => p.id === pkgId);
       if (pkg) {
         const pkgServiceIds = pkg.services.map(s => s.id);
