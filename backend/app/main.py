@@ -1,22 +1,48 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 import logging
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+ALLOWED_ORIGINS = [
+    "https://salonn-six.vercel.app",
+    "http://localhost:3000",
+]
+
 # ── Create app and CORS FIRST so it always responds ──────────────
 app = FastAPI(title="Salon Customer Management System API")
 
+# Manual CORS middleware to guarantee headers are always present
+class ForceCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+        # Handle preflight
+        if request.method == "OPTIONS":
+            response = Response(status_code=200)
+            if origin in ALLOWED_ORIGINS:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+            return response
+        response = await call_next(request)
+        if origin in ALLOWED_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
+app.add_middleware(ForceCORSMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://salonn-six.vercel.app",
-        "http://localhost:3000",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
