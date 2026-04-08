@@ -1,49 +1,23 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 import logging
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-def is_allowed_origin(origin: str) -> bool:
-    if not origin:
-        return False
-    if origin == "http://localhost:3000":
-        return True
-    if origin.endswith(".vercel.app") and origin.startswith("https://"):
-        return True
-    return False
-
 # ── Create app and CORS FIRST so it always responds ──────────────
 app = FastAPI(title="Salon Customer Management System API")
 
-# Manual CORS middleware to guarantee headers are always present
-class ForceCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin", "")
-        allowed = is_allowed_origin(origin)
-        # Handle preflight
-        if request.method == "OPTIONS":
-            response = Response(status_code=200)
-            if allowed:
-                response.headers["Access-Control-Allow-Origin"] = origin
-                response.headers["Access-Control-Allow-Credentials"] = "true"
-                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-                response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
-            return response
-        response = await call_next(request)
-        if allowed:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        return response
-
-app.add_middleware(ForceCORSMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ── Database setup (wrapped so app starts even if DB fails) ──────
 try:
