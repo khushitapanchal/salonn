@@ -188,7 +188,7 @@ class AppointmentServiceResponse(BaseModel):
 
 class AppointmentResponse(BaseModel):
     id: int
-    customer_id: int
+    customer_id: Optional[int] = None
     date: date
     time: Union[time, str]
     status: str
@@ -200,7 +200,7 @@ class AppointmentResponse(BaseModel):
     completed_at: Optional[datetime] = None
     assigned_staff_id: Optional[int] = None
     assigned_staff: Optional[UserResponse] = None
-    customer: CustomerResponse
+    customer: Optional[CustomerResponse] = None
     services: List[AppointmentServiceResponse] = []
     service_ids: List[int] = []
 
