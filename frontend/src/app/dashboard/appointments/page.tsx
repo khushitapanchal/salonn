@@ -195,7 +195,7 @@ export default function AppointmentsPage() {
         n.add(pkg.id);
         setFormData(prev => ({
           ...prev,
-          service_ids: [...new Set([...prev.service_ids, ...pkgServiceIds])],
+          service_ids: Array.from(new Set([...prev.service_ids, ...pkgServiceIds])),
         }));
       }
       return n;

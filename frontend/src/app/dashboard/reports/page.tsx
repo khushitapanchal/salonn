@@ -75,11 +75,10 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    fetchDaily(dailyRange);
-    fetchMonthly(selectedYear);
     fetchServices();
     fetchCustomers();
     api.get('/services/all').then(r => setAllServices(r.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getServicePriceLabel = (s: ServiceData) => {
