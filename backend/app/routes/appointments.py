@@ -54,7 +54,9 @@ def debug_appointments(db: Session = Depends(database.get_db), current_user: mod
 @router.get("/", response_model=List[schemas.AppointmentResponse])
 def get_appointments(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     try:
-        appointments = db.query(models.Appointment).options(
+        appointments = db.query(models.Appointment).filter(
+            models.Appointment.customer_id.isnot(None)
+        ).options(
             joinedload(models.Appointment.customer),
             joinedload(models.Appointment.assigned_staff),
             joinedload(models.Appointment.services),
