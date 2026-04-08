@@ -74,11 +74,11 @@ export default function ReportsPage() {
     setCustomerReport(res.data);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchServices();
     fetchCustomers();
     api.get('/services/all').then(r => setAllServices(r.data)).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getServicePriceLabel = (s: ServiceData) => {

@@ -206,7 +206,7 @@ export default function AppointmentsPage() {
   const calcTotal = () => {
     let total = 0;
     const coveredByPackage = new Set<number>();
-    for (const pkgId of selectedPackageIds) {
+    for (const pkgId of Array.from(selectedPackageIds)) {
       const pkg = packages.find(p => p.id === pkgId);
       if (pkg) {
         const pkgServiceIds = pkg.services.map(s => s.id);
