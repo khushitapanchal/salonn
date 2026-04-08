@@ -148,7 +148,7 @@ export default function AppointmentsPage() {
     setSelectedPackageIds(new Set());
     setSelectedLengths({});
     setFormData({
-      customer_id: String(appt.customer.id),
+      customer_id: String(appt.customer?.id || ''),
       date: appt.date,
       time: appt.time,
       service_ids: appt.services.map(s => s.id).filter((id): id is number => id != null),
@@ -337,7 +337,7 @@ export default function AppointmentsPage() {
                       {format(parseISO(a.date), 'MMM d, yyyy')} at {a.time}
                     </div>
                   </td>
-                  <td style={{ fontWeight: 500 }}>{a.customer.name}</td>
+                  <td style={{ fontWeight: 500 }}>{a.customer?.name || 'Deleted Customer'}</td>
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', whiteSpace: 'normal' }}>
                     {a.package_name ? a.package_name : a.services.map(s => {
                       const full = services.find(sv => sv.id === s.id);

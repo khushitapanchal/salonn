@@ -218,7 +218,7 @@ export default function CalendarPage() {
     setSelectedPackageIds(new Set());
     setSelectedLengths({});
     setFormData({
-      customer_id: String(appt.customer.id),
+      customer_id: String(appt.customer?.id || ''),
       date: appt.date,
       time: appt.time,
       service_ids: appt.services.map(s => s.id).filter((id): id is number => id != null),
@@ -437,8 +437,8 @@ export default function CalendarPage() {
                   <div key={day.toISOString()} className={today ? styles.dayCellToday : inMonth ? styles.dayCell : styles.dayCellOther} onClick={() => openBookingForDate(day)}>
                     <div className={today ? styles.dayNumberToday : styles.dayNumber}>{format(day, 'd')}</div>
                     {dayAppts.slice(0, 3).map(a => (
-                      <span key={a.id} className={getEventDotStyle(a.status)} onClick={e => { e.stopPropagation(); setDetailAppt(a); }} title={`${a.time} – ${a.customer.name}`}>
-                        {a.time.slice(0, 5)} {a.customer.name}
+                      <span key={a.id} className={getEventDotStyle(a.status)} onClick={e => { e.stopPropagation(); setDetailAppt(a); }} title={`${a.time} – ${a.customer?.name || 'Deleted Customer'}`}>
+                        {a.time.slice(0, 5)} {a.customer?.name || 'Deleted Customer'}
                       </span>
                     ))}
                     {dayAppts.length > 3 && (
@@ -473,7 +473,7 @@ export default function CalendarPage() {
                       <div key={day.toISOString()} className={styles.weekCell} onClick={() => openBookingForDate(day, hour)}>
                         {hourAppts.map(a => (
                           <div key={a.id} className={getCardStyle(a.status)} onClick={e => { e.stopPropagation(); setDetailAppt(a); }}>
-                            {a.customer.name}
+                            {a.customer?.name || 'Deleted Customer'}
                           </div>
                         ))}
                       </div>
@@ -499,7 +499,7 @@ export default function CalendarPage() {
                         <div key={a.id} className={getCardStyle(a.status)} onClick={e => { e.stopPropagation(); setDetailAppt(a); }}>
                           <Clock size={14} />
                           <span>{a.time.slice(0, 5)}</span>
-                          <span style={{ fontWeight: 600 }}>{a.customer.name}</span>
+                          <span style={{ fontWeight: 600 }}>{a.customer?.name || 'Deleted Customer'}</span>
                           {a.assigned_staff && <span style={{ fontSize: '0.7rem', color: 'inherit', opacity: 0.7 }}>({a.assigned_staff.name})</span>}
                           <span style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>₹{a.total_amount}</span>
                         </div>
@@ -521,7 +521,7 @@ export default function CalendarPage() {
             upcomingAppointments.map(a => (
               <div key={a.id} className={styles.upcomingItem} onClick={() => setDetailAppt(a)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className={styles.upcomingItemName}>{a.customer.name}</div>
+                  <div className={styles.upcomingItemName}>{a.customer?.name || 'Deleted Customer'}</div>
                   <span style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', color: getStatusColor(a.status) }}>{a.status}</span>
                 </div>
                 <div className={styles.upcomingItemTime}>
@@ -552,11 +552,11 @@ export default function CalendarPage() {
             <div className={styles.detailGrid}>
               <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Customer</span>
-                <span className={styles.detailValue}>{detailAppt.customer.name}</span>
+                <span className={styles.detailValue}>{detailAppt.customer?.name || 'Deleted Customer'}</span>
               </div>
               <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Phone</span>
-                <span className={styles.detailValue}>{detailAppt.customer.phone || '—'}</span>
+                <span className={styles.detailValue}>{detailAppt.customer?.phone || '—'}</span>
               </div>
               <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Date</span>
